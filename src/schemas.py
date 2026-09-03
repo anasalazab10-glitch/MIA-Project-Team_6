@@ -76,7 +76,7 @@ class Chunk(BaseModel):
     """
     chunk_id: str
     document_id: str
-    page: int
+    page: list[int]
     section: str | None = None
     content_type: ContentType
     content: str | TableContent
