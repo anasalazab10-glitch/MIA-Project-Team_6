@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -37,14 +37,21 @@ class RetrievalMethod(str, Enum):
 # ---------------------------------------------------------------------------
 
 class EvidenceCitation(BaseModel):
-    """Strict citation format required by the project's answer-validator-api.
+    """Citation format required by the project's answer-validator-api.
     
-    The reasoning agent must include evidence in this exact format:
-    {"document_id": "...", "page": int, "section": "..."}
+    The reasoning agent must include evidence in this format:
+    {"document_id": "...", "page": list[int], "section": "..."}
     """
     document_id: str
-    page: int
+    page: list[int]
     section: str | None = None
+
+    @field_validator("page", mode="before")
+    @classmethod
+    def coerce_page_to_list(cls, v: Any) -> list[int]:
+        if isinstance(v, int):
+            return [v]
+        return v
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +89,13 @@ class Chunk(BaseModel):
     content: str | TableContent
     bbox: list[float] | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("page", mode="before")
+    @classmethod
+    def coerce_page_to_list(cls, v: Any) -> list[int]:
+        if isinstance(v, int):
+            return [v]
+        return v
 
     def to_text(self) -> str:
         """Return a string representation of chunk content.

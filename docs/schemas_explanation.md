@@ -69,11 +69,12 @@ Both sub-teams operate against the common `Chunk` contract and `mock_chunks.json
   ```python
   class EvidenceCitation(BaseModel):
       document_id: str
-      page: int
+      page: list[int]
       section: str | None = None
 
   class Chunk(BaseModel):
       ...
+      page: list[int]
       def to_evidence(self) -> EvidenceCitation:
           return EvidenceCitation(
               document_id=self.document_id,
@@ -82,10 +83,8 @@ Both sub-teams operate against the common `Chunk` contract and `mock_chunks.json
           )
   ```
 * **Why it is necessary:**
-  - **Answer Validator Rule**: Pages 4–6 of the project specification state that every answer produced by the agent must include evidence strictly adhering to:
-    ```json
-    { "document_id": "...", "page": 0, "section": "..." }
-    ```
+  - **Multi-Page Chunks**: Real-world financial tables and section-aware chunks often span multiple pages (e.g. `page=[2, 3]`).
+  - **Team Consensus**: Both `Chunk` and `EvidenceCitation` use `page: list[int]` so multi-page evidence is preserved naturally, and the answer-validator will require and validate `page: list[int]`.
   - Providing this helper ensures retrieval candidates directly map into the exact citation format needed by downstream services (`agent-service` and `answer-validator-api`).
 
 ---

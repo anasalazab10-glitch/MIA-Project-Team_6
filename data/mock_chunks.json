@@ -2,7 +2,9 @@
   {
     "chunk_id": "doc1_chunk1",
     "document_id": "doc1",
-    "page": 1,
+    "page": [
+      1
+    ],
     "section": "Company Overview",
     "content_type": "heading",
     "content": "Company Overview",
@@ -15,7 +17,9 @@
   {
     "chunk_id": "doc1_chunk2",
     "document_id": "doc1",
-    "page": 1,
+    "page": [
+      1
+    ],
     "section": "Company Overview",
     "content_type": "text",
     "content": "Northbridge Technologies Inc. is a global provider of enterprise software solutions headquartered in Austin, Texas.",
@@ -28,7 +32,9 @@
   {
     "chunk_id": "doc1_chunk3",
     "document_id": "doc1",
-    "page": 1,
+    "page": [
+      1
+    ],
     "section": "Company Overview",
     "content_type": "text",
     "content": "Founded in 2005, the company serves over 3,000 corporate clients across North America, Europe, and Asia.",
@@ -41,7 +47,9 @@
   {
     "chunk_id": "doc1_chunk4",
     "document_id": "doc1",
-    "page": 1,
+    "page": [
+      1
+    ],
     "section": "Company Overview",
     "content_type": "text",
     "content": "In fiscal year 2024, the company continued to expand its cloud services division while maintaining steady growth in its core software licensing business.",
@@ -54,7 +62,9 @@
   {
     "chunk_id": "doc1_chunk5",
     "document_id": "doc1",
-    "page": 2,
+    "page": [
+      2
+    ],
     "section": "Financial Results",
     "content_type": "heading",
     "content": "Financial Results",
@@ -67,7 +77,9 @@
   {
     "chunk_id": "doc1_chunk6",
     "document_id": "doc1",
-    "page": 2,
+    "page": [
+      2
+    ],
     "section": "Financial Results",
     "content_type": "text",
     "content": "Revenue increased from $100 million in 2023 to $120 million in 2024, representing a year-over-year growth rate of 20%. This growth was primarily driven by strong demand for the company's cloud subscription products.",
@@ -80,7 +92,9 @@
   {
     "chunk_id": "doc1_chunk7",
     "document_id": "doc1",
-    "page": 2,
+    "page": [
+      2
+    ],
     "section": "Financial Results",
     "content_type": "text",
     "content": "The increase in average contract value across enterprise customers also contributed significantly to the revenue growth.",
@@ -93,7 +107,9 @@
   {
     "chunk_id": "doc1_chunk8",
     "document_id": "doc1",
-    "page": 2,
+    "page": [
+      2
+    ],
     "section": "Financial Results",
     "content_type": "table",
     "content": {
@@ -133,7 +149,9 @@
   {
     "chunk_id": "doc1_chunk9",
     "document_id": "doc1",
-    "page": 2,
+    "page": [
+      2
+    ],
     "section": "Financial Results",
     "content_type": "text",
     "content": "Operating income for fiscal year 2024 reached $19 million, up from $15 million in 2023. Net profit for 2024 was $13 million.",
@@ -146,7 +164,9 @@
   {
     "chunk_id": "doc1_chunk10",
     "document_id": "doc1",
-    "page": 3,
+    "page": [
+      3
+    ],
     "section": "Operating Expenses",
     "content_type": "heading",
     "content": "Operating Expenses",
@@ -159,7 +179,9 @@
   {
     "chunk_id": "doc1_chunk11",
     "document_id": "doc1",
-    "page": 3,
+    "page": [
+      3
+    ],
     "section": "Operating Expenses",
     "content_type": "text",
     "content": "Research and development expenses for 2024 totaled $22 million, an increase of 10% compared to $20 million in 2023.",
@@ -172,7 +194,9 @@
   {
     "chunk_id": "doc1_chunk12",
     "document_id": "doc1",
-    "page": 3,
+    "page": [
+      3
+    ],
     "section": "Operating Expenses",
     "content_type": "text",
     "content": "The company continued to invest heavily in artificial intelligence features for its enterprise software platform. Selling, general and administrative expenses were $18 million in 2024.",
@@ -185,7 +209,9 @@
   {
     "chunk_id": "doc1_chunk13",
     "document_id": "doc1",
-    "page": 3,
+    "page": [
+      3
+    ],
     "section": "Operating Expenses",
     "content_type": "table",
     "content": {
@@ -221,7 +247,9 @@
   {
     "chunk_id": "doc2_chunk1",
     "document_id": "doc2",
-    "page": 1,
+    "page": [
+      1
+    ],
     "section": "Business Performance",
     "content_type": "heading",
     "content": "Business Performance",
@@ -234,7 +262,9 @@
   {
     "chunk_id": "doc2_chunk2",
     "document_id": "doc2",
-    "page": 1,
+    "page": [
+      1
+    ],
     "section": "Business Performance",
     "content_type": "text",
     "content": "Northbridge Technologies delivered a strong overall performance in fiscal year 2024, with total revenue of $120 million and continued expansion into international markets.",
@@ -247,7 +277,9 @@
   {
     "chunk_id": "doc2_chunk3",
     "document_id": "doc2",
-    "page": 1,
+    "page": [
+      1
+    ],
     "section": "Business Performance",
     "content_type": "text",
     "content": "Customer retention remained above 95%, and the company added 250 new enterprise accounts during the year.",
@@ -260,7 +292,9 @@
   {
     "chunk_id": "doc2_chunk4",
     "document_id": "doc2",
-    "page": 2,
+    "page": [
+      2
+    ],
     "section": "Revenue by Region",
     "content_type": "heading",
     "content": "Revenue by Region",
@@ -273,7 +307,9 @@
   {
     "chunk_id": "doc2_chunk5",
     "document_id": "doc2",
-    "page": 2,
+    "page": [
+      2
+    ],
     "section": "Revenue by Region",
     "content_type": "text",
     "content": "Among the company's operating regions, Asia-Pacific recorded the highest revenue growth rate in 2024, growing 35% year-over-year.",
@@ -286,7 +322,9 @@
   {
     "chunk_id": "doc2_chunk6",
     "document_id": "doc2",
-    "page": 2,
+    "page": [
+      2
+    ],
     "section": "Revenue by Region",
     "content_type": "text",
     "content": "The company expanded its sales team in Singapore and Japan. North America remained the largest region by total revenue, while Europe grew at a more moderate pace.",
@@ -299,7 +337,9 @@
   {
     "chunk_id": "doc2_chunk7",
     "document_id": "doc2",
-    "page": 2,
+    "page": [
+      2
+    ],
     "section": "Revenue by Region",
     "content_type": "table",
     "content": {
@@ -345,7 +385,9 @@
   {
     "chunk_id": "doc2_chunk8",
     "document_id": "doc2",
-    "page": 3,
+    "page": [
+      3
+    ],
     "section": "Cash Flow",
     "content_type": "heading",
     "content": "Cash Flow",
@@ -358,7 +400,9 @@
   {
     "chunk_id": "doc2_chunk9",
     "document_id": "doc2",
-    "page": 3,
+    "page": [
+      3
+    ],
     "section": "Cash Flow",
     "content_type": "text",
     "content": "Net cash generated from operating activities was $17 million in fiscal year 2024, compared to $13 million in 2023.",
@@ -371,7 +415,9 @@
   {
     "chunk_id": "doc2_chunk10",
     "document_id": "doc2",
-    "page": 3,
+    "page": [
+      3
+    ],
     "section": "Cash Flow",
     "content_type": "text",
     "content": "This increase was primarily attributable to higher net profit and improved collections from enterprise customers. Capital expenditures for the year totaled $4 million.",
@@ -384,7 +430,9 @@
   {
     "chunk_id": "doc2_chunk11",
     "document_id": "doc2",
-    "page": 3,
+    "page": [
+      3
+    ],
     "section": "Cash Flow",
     "content_type": "table",
     "content": {
@@ -420,7 +468,9 @@
   {
     "chunk_id": "doc2_chunk12",
     "document_id": "doc2",
-    "page": 4,
+    "page": [
+      4
+    ],
     "section": "Outlook",
     "content_type": "heading",
     "content": "Outlook",
@@ -433,7 +483,9 @@
   {
     "chunk_id": "doc2_chunk13",
     "document_id": "doc2",
-    "page": 4,
+    "page": [
+      4
+    ],
     "section": "Outlook",
     "content_type": "text",
     "content": "Management expects revenue growth to continue in fiscal year 2025, with total revenue projected to reach between $135 million and $145 million.",
@@ -446,7 +498,9 @@
   {
     "chunk_id": "doc2_chunk14",
     "document_id": "doc2",
-    "page": 4,
+    "page": [
+      4
+    ],
     "section": "Outlook",
     "content_type": "text",
     "content": "The company plans to further invest in research and development and expand its Asia-Pacific operations, building on the 35% regional growth achieved in 2024.",
