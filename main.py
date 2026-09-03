@@ -2,23 +2,25 @@
 main.py
 
 Exposes the agent as a microservice: POST /run accepts a question, runs it
-through the compiled LangGraph, formats it, and returns the validated JSON
-answer.
+through the compiled LangGraph (classifier -> retriever -> reasoner ->
+formatter, with retry/insufficient-evidence branching), and returns the
+validated JSON answer.
 
-STATUS: graph.py isn't built yet, so this calls the same placeholder logic
-as run_test.py. Once graph.py exists, replace `run_agent_graph()` below.
-
-Test it right now with:
+Test it with:
     uvicorn main:app --reload
 Then in another terminal:
-    curl -X POST http://localhost:8000/run -H "Content-Type: application/json" -d '{"question": "What was revenue in 2020?"}'
+    curl -X POST http://localhost:8000/run -H "Content-Type: application/json" -d '{"question": "What was Jabil Circuit'\''s operating income in 2019?"}'
 """
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+from dotenv import load_dotenv
+load_dotenv()  # must run BEFORE importing graph, since classifier.py creates
+                # its Groq client at import time using GROQ_API_KEY
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from formatter import format_answer
+from graph import agent_graph
 
 app = FastAPI(title="Reasoner Service")
 
@@ -34,20 +36,17 @@ class RunResponse(BaseModel):
     params: Dict[str, Any]
 
 
-# PLACEHOLDER
 def run_agent_graph(question: str, session_id: Optional[str]) -> Dict[str, Any]:
     """
-    TEMPORARY stand-in for the real compiled LangGraph. Returns a fake
-    'direct' answer so the rest of the harness can be built/tested now.
+    Runs the real compiled LangGraph pipeline end to end:
+    classifier -> retriever -> (reasoner | mark_insufficient) -> formatter.
     """
-    fake_state = {
+    initial_state = {
         "question": question,
         "session_id": session_id,
-        "question_type": "direct",
-        "extracted_values": ["MOCK_ANSWER"],
-        "evidence": [{"document_id": "mock_doc", "page": 1, "section": "General"}],
+        "retrieved_chunks": [],
     }
-    result_state = format_answer(fake_state)
+    result_state = agent_graph.invoke(initial_state)
     return result_state["final_answer"]
 
 
