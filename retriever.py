@@ -104,22 +104,18 @@ def retrieve_evidence(state: AgentState, mock_mode: bool = False) -> AgentState:
         chunks = _run_search(query, search_type, mock_mode=mock_mode)
         all_chunks.extend(chunks)
 
-    # --- Step 1: rule-based check (fast, free) ---
     if not _rule_based_check(all_chunks):
         state["retrieved_chunks"] = all_chunks
         state["evidence_status"] = "insufficient"
         state["evidence"] = []
         state["retry_count"] = state.get("retry_count", 0) + 1
         return state
-
-    # --- Step 2: LLM-based relevance check (only runs if chunks exist) ---
     sufficiency = _llm_relevance_check(question, all_chunks)
 
     state["retrieved_chunks"] = all_chunks
     state["evidence_status"] = sufficiency.status
     state["reasoning_summary"] = sufficiency.reason
 
-    # Build the citation list from the retrieved chunks
     state["evidence"] = [
         DocumentCitation(document_id=c.document_id, page=c.page, section=c.section)
         for c in all_chunks
@@ -132,10 +128,7 @@ def retrieve_evidence(state: AgentState, mock_mode: bool = False) -> AgentState:
 
 
 def should_retry(state: AgentState) -> bool:
-    """
-    Helper for graph.py's conditional edge: decides whether to loop back
-    to retrieval again, or move forward / give up.
-    """
+  
     status = state.get("evidence_status")
     retries = state.get("retry_count", 0)
     return status != "sufficient" and retries < MAX_RETRIES
