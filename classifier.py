@@ -21,8 +21,6 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 MODEL_NAME = "openai/gpt-oss-20b"
 
-
-# ---- Structured output contract for the LLM's classification ----
 class SubQuery(BaseModel):
     query: str = Field(description="A focused search query for one piece of information")
     purpose: str = Field(description="Brief note on why this sub-query is needed")

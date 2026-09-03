@@ -57,10 +57,6 @@ def _eval_ast_node(node: ast.AST) -> Any:
 
 
 def calculate(formula: str) -> float:
-    """
-    Deterministic calculator tool. This is the ONLY place arithmetic is
-    allowed to happen — the LLM must never produce a computed number itself.
-    """
     clean_formula = re.sub(r"(?<=\d),(?=\d)", "", formula.strip())
     try:
         parsed = ast.parse(clean_formula, mode="eval")
@@ -76,7 +72,6 @@ RETRIEVAL_API_URL = "http://localhost:8001"
 
 
 def _mock_chunks() -> List[RetrievedChunk]:
-    """Shared mock fallback data used across tools during standalone dev."""
     return [
         RetrievedChunk(
             document_id="cts-corporation_2019.pdf",
@@ -138,10 +133,6 @@ def search_tables(
     top_k: int = 5,
     mock_mode: bool = False,
 ) -> List[RetrievedChunk]:
-    """
-    Table-specific search — used when the question needs structured/tabular
-    evidence (e.g. line items, financial statement rows) rather than prose.
-    """
     if not mock_mode:
         payload = {
             "query": query,
@@ -172,11 +163,6 @@ def filter_documents(
     metadata: Dict[str, Any],
     mock_mode: bool = False,
 ) -> List[str]:
-    """
-    Non-vector, metadata-based lookup — e.g. filter by document_id, company
-    name, or fiscal year before/instead of running semantic search.
-    Returns a list of matching document_ids.
-    """
     if not mock_mode:
         try:
             with httpx.Client(timeout=10.0) as client:
@@ -194,5 +180,4 @@ def filter_documents(
         except Exception as exc:
             print(f"[filter_documents] retrieval-api call failed: {exc}")
 
-    # Mock fallback: pretend everything matches
     return [c.document_id for c in _mock_chunks()]
