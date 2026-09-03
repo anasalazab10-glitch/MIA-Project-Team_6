@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
-from .processor import DocProcessor
+from .processor import DocProcessor, sha1_id
 from .schemas import ProcessResponse
 
 app = FastAPI(title="doc-processor-api", version="0.1.0")
@@ -15,6 +17,19 @@ processor: DocProcessor | None = None
 def _startup() -> None:
     global processor
     processor = DocProcessor(lang="en")
+
+
+def _default_document_id(filename: str | None, pdf_bytes: bytes) -> str:
+    """Default document_id = uploaded filename without extension.
+
+    For TAT-DQA this equals the dataset's doc uid (e.g. d5d739657785641f4689be3d234e0a8f),
+    which keeps citations and evaluation aligned. Falls back to sha1 of the bytes.
+    """
+    if filename:
+        stem = os.path.splitext(os.path.basename(filename.replace("\\", "/")))[0].strip()
+        if stem:
+            return stem
+    return sha1_id(pdf_bytes)
 
 
 @app.get("/health")
@@ -35,13 +50,14 @@ async def process_pdf(
     if not pdf_bytes:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    # basic extension check (not perfect, but useful)
     if file.filename and not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
+    doc_id = (document_id or "").strip() or _default_document_id(file.filename, pdf_bytes)
+
     doc_id, num_pages, elements = processor.process_pdf(
         pdf_bytes=pdf_bytes,
-        document_id=document_id,
+        document_id=doc_id,
         dpi=dpi,
     )
     return ProcessResponse(document_id=doc_id, num_pages=num_pages, elements=elements)
