@@ -2,5 +2,8 @@ pydantic
 sentence-transformers
 qdrant-client
 rank-bm25
-uvicorn
 fastapi
+uvicorn
+pytest
+torch
+numpy
