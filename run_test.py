@@ -2,7 +2,12 @@
 run_test.py
 
 Runs the complete agent pipeline (graph.py) against a set of real practice
-questions and prints what each one produced
+questions and prints what each one produced. This is just a functional
+test harness - it does NOT compute accuracy metrics (Exact Match, F1,
+numerical accuracy). Scoring against ground truth belongs to eval-service,
+per the project spec.
+
+Run: python3 run_test.py
 """
 import json
 from typing import Any, Dict, List
