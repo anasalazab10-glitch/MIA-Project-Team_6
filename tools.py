@@ -57,6 +57,10 @@ def _eval_ast_node(node: ast.AST) -> Any:
 
 
 def calculate(formula: str) -> float:
+    """
+    Deterministic calculator tool. This is the ONLY place arithmetic is
+    allowed to happen — the LLM must never produce a computed number itself.
+    """
     clean_formula = re.sub(r"(?<=\d),(?=\d)", "", formula.strip())
     try:
         parsed = ast.parse(clean_formula, mode="eval")
@@ -71,7 +75,44 @@ def calculate(formula: str) -> float:
 RETRIEVAL_API_URL = "http://localhost:8001"
 
 
+def _adapt_raw_chunk(raw: Dict[str, Any]) -> RetrievedChunk:
+    """
+    Converts retrieval-api's raw chunk format into our RetrievedChunk schema.
+
+    Their format differs from ours in two ways:
+      - "page" is a list (e.g. [1]) instead of a plain int
+      - "content" is used instead of "text", and for tables it's a nested
+        dict ({"headers": [...], "rows": [...]}) instead of a plain string
+    """
+    page_raw = raw.get("page")
+    if isinstance(page_raw, list):
+        page = page_raw[0] if page_raw else 0
+    else:
+        page = page_raw or 0
+
+    content = raw.get("content", "")
+    if isinstance(content, dict):
+        # Table content: flatten headers/rows into readable text
+        headers = content.get("headers", [])
+        rows = content.get("rows", [])
+        lines = [", ".join(str(h) for h in headers)]
+        for row in rows:
+            lines.append(", ".join(str(cell) for cell in row))
+        text = "; ".join(lines)
+    else:
+        text = str(content)
+
+    return RetrievedChunk(
+        document_id=raw.get("document_id", "unknown"),
+        page=page,
+        section=raw.get("section", "General"),
+        content_type=raw.get("content_type", "text"),
+        text=text,
+    )
+
+
 def _mock_chunks() -> List[RetrievedChunk]:
+    """Shared mock fallback data used across tools during standalone dev."""
     return [
         RetrievedChunk(
             document_id="cts-corporation_2019.pdf",
@@ -112,10 +153,8 @@ def search_documents(
                 res = client.post(f"{RETRIEVAL_API_URL}/search", json=payload)
                 if res.status_code == 200:
                     data = res.json()
-                    return [
-                        RetrievedChunk(**chunk)
-                        for chunk in data.get("results", [])
-                    ]
+                    raw_results = data.get("results", data if isinstance(data, list) else [])
+                    return [_adapt_raw_chunk(chunk) for chunk in raw_results]
                 else:
                     print(
                         f"[search_documents] retrieval-api returned "
@@ -133,6 +172,10 @@ def search_tables(
     top_k: int = 5,
     mock_mode: bool = False,
 ) -> List[RetrievedChunk]:
+    """
+    Table-specific search — used when the question needs structured/tabular
+    evidence (e.g. line items, financial statement rows) rather than prose.
+    """
     if not mock_mode:
         payload = {
             "query": query,
@@ -144,10 +187,8 @@ def search_tables(
                 res = client.post(f"{RETRIEVAL_API_URL}/search/tables", json=payload)
                 if res.status_code == 200:
                     data = res.json()
-                    return [
-                        RetrievedChunk(**chunk)
-                        for chunk in data.get("results", [])
-                    ]
+                    raw_results = data.get("results", data if isinstance(data, list) else [])
+                    return [_adapt_raw_chunk(chunk) for chunk in raw_results]
                 else:
                     print(
                         f"[search_tables] retrieval-api returned "
@@ -163,6 +204,11 @@ def filter_documents(
     metadata: Dict[str, Any],
     mock_mode: bool = False,
 ) -> List[str]:
+    """
+    Non-vector, metadata-based lookup — e.g. filter by document_id, company
+    name, or fiscal year before/instead of running semantic search.
+    Returns a list of matching document_ids.
+    """
     if not mock_mode:
         try:
             with httpx.Client(timeout=10.0) as client:
@@ -180,4 +226,5 @@ def filter_documents(
         except Exception as exc:
             print(f"[filter_documents] retrieval-api call failed: {exc}")
 
+    # Mock fallback: pretend everything matches
     return [c.document_id for c in _mock_chunks()]
