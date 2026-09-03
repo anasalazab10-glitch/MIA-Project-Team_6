@@ -83,12 +83,15 @@ def reciprocal_rank_fusion(
                 source_scores[chunk_id] = {}
                 source_ranks[chunk_id] = {}
 
-            # RRF calculation: weight / (k + rank)
-            component = weight / (k + rank)
+            # Use candidate's explicit rank if available, otherwise 1-based list index
+            cand_rank = candidate.rank if candidate.rank else rank
+
+            # RRF calculation: weight / (k + cand_rank)
+            component = weight / (k + cand_rank)
             rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) + component
 
             source_scores[chunk_id][method_name] = candidate.score
-            source_ranks[chunk_id][f"{method_name}_rank"] = rank
+            source_ranks[chunk_id][f"{method_name}_rank"] = cand_rank
 
             if candidate.scores:
                 for k_score, v_score in candidate.scores.items():
