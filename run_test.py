@@ -20,7 +20,13 @@ from typing import Any, Dict, List
 
 
 QUESTIONS_FILE = "questions_setA_practice.json"
-
+ANSWER_TYPE_MAP = {
+    "arithmetic": "calculated",
+    "span": "direct",
+    "multi-span": "multi_span",
+    "unanswerable": "insufficient_evidence",
+    "count": "direct",
+}
 
 # PLACEHOLDER
 def run_agent_graph(question: str) -> Dict[str, Any]:
@@ -90,12 +96,12 @@ def numerical_accuracy(predicted: Any, ground_truth: Any, tolerance: float = 0.0
 
 def score_one(question_item: Dict[str, Any], predicted_answer: Dict[str, Any]) -> Dict[str, Any]:
     """Compares one predicted answer against its ground truth."""
-    gt = question_item.get("source_answer")
+    gt = question_item.get("ground_truth_answer")
     predicted_params = predicted_answer.get("params", {})
     predicted_value = predicted_params.get("value") or predicted_params.get("values")
 
     result = {
-        "question": question_item.get("source_question_text"),
+        "question": question_item.get("question_text"),
         "predicted": predicted_value,
         "ground_truth": gt,
         "answer_type": predicted_answer.get("answer_type"),
@@ -113,7 +119,7 @@ def run_benchmark(questions: List[Dict[str, Any]]) -> None:
     all_results = []
 
     for item in questions:
-        question_text = item["source_question_text"]
+        question_text = item["question_text"]
         predicted = run_agent_graph(question_text)
         all_results.append(score_one(item, predicted))
 
