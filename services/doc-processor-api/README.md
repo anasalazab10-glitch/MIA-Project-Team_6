@@ -74,3 +74,18 @@ This service appends one extra element per page:
 
 This is a recall safety net: if the layout model misses a table region, the numbers still appear in `fullocr` text and can be retrieved/cited.
 Downstream retrieval can optionally filter these out (e.g. only index them for BM25).
+
+## Multi-page stability: DPI cap (for low-memory machines)
+Some multi-page PDFs can crash/kill the process at high DPI on low-memory machines.
+To keep the service stable:
+
+- If `num_pages > 1`, the processor caps DPI to `DOC_PROCESSOR_MAX_DPI_MULTIPAGE` (default `120`).
+- The effective DPI is recorded in each element's metadata:
+  - `requested_dpi`
+  - `render_dpi`
+  - `dpi_capped`
+
+Override on stronger machines:
+```bash
+export DOC_PROCESSOR_MAX_DPI_MULTIPAGE=200
+```

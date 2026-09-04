@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import threading
 from typing import Any
 
@@ -178,6 +179,12 @@ class DocProcessor:
 
         with self._lock:
             doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+
+            requested_dpi = dpi
+            if doc.page_count > 1:
+                cap = int(os.getenv("DOC_PROCESSOR_MAX_DPI_MULTIPAGE", "120"))
+                dpi = min(dpi, cap)
+
             all_elements: list[Element] = []
 
             for page_index in range(doc.page_count):
@@ -236,6 +243,8 @@ class DocProcessor:
                                 "block_type": btype,
                                 "bbox_unit": "normalized",
                                 "render_dpi": dpi,
+                                "requested_dpi": requested_dpi,
+                                "dpi_capped": dpi != requested_dpi,
                                 "page_image_size": [w, h],
                             },
                         )
@@ -258,6 +267,8 @@ class DocProcessor:
                                 "source": "paddleocr_full_page_ocr",
                                 "full_page_ocr": True,
                                 "render_dpi": dpi,
+                                "requested_dpi": requested_dpi,
+                                "dpi_capped": dpi != requested_dpi,
                                 "page_image_size": [w, h],
                             },
                         )
