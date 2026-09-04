@@ -6,25 +6,34 @@ from src.schemas import Chunk
 
 
 class VectorStore:
-    def __init__(self,collection_name: str = "ledger_chunks",vector_size: int = 384,):
+    def __init__(
+        self,
+        collection_name: str = "ledger_chunks",
+        vector_size: int = 384,
+        host: str = "localhost",
+        port: int = 6333,
+    ):
         self.collection_name = collection_name
 
-        # Local in-memory Qdrant.
-        # Data exists while this Python process is running.
-        self.client = QdrantClient(":memory:")
-
-        self.client.create_collection(
-            collection_name=self.collection_name,
-            vectors_config=VectorParams(
-                size=vector_size,
-                distance=Distance.COSINE,
-            ),
+        # Connect to the existing Qdrant server
+        self.client = QdrantClient(
+            host=host,
+            port=port,
         )
 
-    def add_chunks(self, chunks: list[Chunk], embeddings, ):
-        """
-        Store chunk embeddings and their metadata in Qdrant.
-        """
+        # Create collection only if it does not already exist
+        if not self.client.collection_exists(self.collection_name):
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(
+                    size=vector_size,
+                    distance=Distance.COSINE,
+                ),
+            )
+
+    def add_chunks(self,chunks: list[Chunk],embeddings,):
+        """Store chunk embeddings and metadata in Qdrant."""
+
         if len(chunks) != len(embeddings):
             raise ValueError(
                 "Number of chunks must match number of embeddings."
@@ -52,9 +61,7 @@ class VectorStore:
         )
 
     def search(self,query_embedding,top_k: int = 30,):
-        """
-        Search Qdrant for the most similar chunks.
-        """
+        """Search Qdrant for the most similar chunks."""
 
         results = self.client.query_points(
             collection_name=self.collection_name,
@@ -63,3 +70,23 @@ class VectorStore:
         )
 
         return results.points
+
+    def get_all_chunks(self) -> list[Chunk]:
+        """Load all indexed chunks from Qdrant."""
+
+        points, _ = self.client.scroll(
+            collection_name=self.collection_name,
+            limit=1000,
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        chunks = []
+
+        for point in points:
+            if point.payload:
+                chunks.append(
+                    Chunk.model_validate(point.payload)
+                )
+
+        return chunks

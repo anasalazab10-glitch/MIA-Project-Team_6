@@ -14,13 +14,13 @@ from typing import Any
 
 try:
     from src.bm25_retriever import BM25Retriever
-    from src.dense_retrieval import DenseRetriever
+    from src.dense_retriever import DenseRetriever
     from src.embeddings import EmbeddingModel
     from src.schemas import Candidate, Chunk, RetrievalMethod, RetrievalResponse
     from src.vector_store import VectorStore
 except ImportError:
     from bm25_retriever import BM25Retriever
-    from dense_retrieval import DenseRetriever
+    from dense_retriever import DenseRetriever
     from embeddings import EmbeddingModel
     from schemas import Candidate, Chunk, RetrievalMethod, RetrievalResponse
     from vector_store import VectorStore

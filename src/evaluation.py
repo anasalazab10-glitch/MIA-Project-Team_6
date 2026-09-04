@@ -23,7 +23,7 @@ from typing import Any, Callable
 
 try:
     from src.bm25_retriever import BM25Retriever
-    from src.dense_retrieval import DenseRetriever
+    from src.dense_retriever import DenseRetriever
     from src.embeddings import EmbeddingModel
     from src.fusion import HybridRetriever, build_hybrid_pipeline
     from src.reranker import CrossEncoderReranker, RetrievalPipeline
