@@ -109,3 +109,12 @@ Override on stronger machines:
 ```bash
 export DOC_PROCESSOR_MAX_DPI_MULTIPAGE=200
 ```
+
+## Heading promotion heuristic
+Some headings are sometimes detected as plain `text` blocks by the layout model (common in financial PDFs).
+We apply a lightweight post-processing heuristic (regex + bbox height vs median text height) to promote such blocks to:
+
+- `content_type: "heading"`
+- `metadata.heading_promoted: true`
+
+This improves `section` assignment for downstream retrieval and citations.

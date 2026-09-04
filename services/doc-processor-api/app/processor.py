@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import math
 import os
+import re
 import threading
 from typing import Any
 
@@ -34,6 +35,30 @@ def clean_text(s: Any) -> str:
     s = str(s)
     return " ".join(s.replace("\n", " ").split()).strip()
 
+
+
+def _bbox_height_px(b: dict[str, Any]) -> float:
+    bb = b.get("bbox")
+    if not bb or len(bb) != 4:
+        return 0.0
+    return float(bb[3] - bb[1])
+
+_HEADING_RE = re.compile(r"^(\d{1,2}[\.|\)]\s+.+|[A-Z][A-Za-z0-9&\-/ ]{2,})$")
+
+def looks_like_heading(text: str, bbox_h: float, median_text_h: float) -> bool:
+    t = clean_text(text)
+    if not t:
+        return False
+    # Too long is rarely a heading
+    if len(t) > 80:
+        return False
+    # Common heading patterns: "3. Debtors", "2) Fixed assets", or Title-ish short text
+    regex_ok = bool(_HEADING_RE.match(t)) and not t.endswith(".")
+    # Tall text relative to typical text lines on the page
+    tall_ok = (median_text_h > 0) and (bbox_h >= 1.6 * median_text_h) and (len(t) <= 60)
+    # Avoid promoting sentences
+    sentence_like = t.endswith(".") or t.count(" ") > 12
+    return (regex_ok or tall_ok) and not sentence_like
 
 def extract_text(res_field: Any) -> str:
     if res_field is None:
@@ -203,6 +228,17 @@ class DocProcessor:
                     return (bb[1], bb[0])
 
                 blocks = sorted(blocks, key=key_fn)
+
+                # Compute median text bbox height (px) for heading-promotion heuristic
+
+                text_heights = [_bbox_height_px(x) for x in blocks if x.get('type') == 'text']
+
+                text_heights = [h for h in text_heights if h > 0]
+
+                text_heights.sort()
+
+                median_text_h = text_heights[len(text_heights)//2] if text_heights else 0.0
+
                 current_section: str | None = None
 
                 for bi, b in enumerate(blocks):
@@ -216,11 +252,20 @@ class DocProcessor:
                     else:
                         content_type = ContentType.TEXT
 
+                    # heading promotion flag (must exist for ALL block types, including tables)
+                    heading_promoted = False
+
                     if content_type == ContentType.TABLE:
                         html = (b.get("res") or {}).get("html", "")
                         content = html_table_to_content(html) if html else TableContent(headers=[], rows=[])
                     else:
                         content = extract_text(b.get("res"))
+
+                    heading_promoted = False
+                    if content_type == ContentType.TEXT and btype == "text" and isinstance(content, str):
+                        if looks_like_heading(content, _bbox_height_px(b), median_text_h):
+                            content_type = ContentType.HEADING
+                            heading_promoted = True
 
                     if content_type == ContentType.HEADING:
                         if isinstance(content, str) and content.strip():
@@ -246,6 +291,7 @@ class DocProcessor:
                                 "requested_dpi": requested_dpi,
                                 "dpi_capped": dpi != requested_dpi,
                                 "page_image_size": [w, h],
+                                "heading_promoted": heading_promoted,
                             },
                         )
                     )
