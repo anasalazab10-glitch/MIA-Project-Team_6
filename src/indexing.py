@@ -5,11 +5,7 @@ from src.embeddings import EmbeddingModel
 from src.vector_store import VectorStore
 
 
-def index_documents(
-    input_path: str,
-    embedding_model: EmbeddingModel,
-    vector_store: VectorStore,
-):
+def index_documents(input_path: str,embedding_model: EmbeddingModel,vector_store: VectorStore,):
     """
     Load processed document elements, create chunks,
     generate embeddings, and store them in Qdrant.

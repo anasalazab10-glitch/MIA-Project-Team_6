@@ -1,10 +1,9 @@
-# Ledger – Dense Retrieval
+# Ledger – Retrieval System
 
-## What I Worked On
 
-I implemented the **Dense Retrieval** part of the Ledger project.
+I implemented and connected the Retrieval part of the Ledger project.
 
-The main goal was to take the processed documents, split them into meaningful chunks, generate embeddings for those chunks, store them in Qdrant, and retrieve the most relevant chunks for a query.
+The main goal was to take the processed documents, split them into meaningful chunks, generate embeddings, store them in Qdrant, retrieve relevant candidates using multiple retrieval methods, and rerank them before sending the final candidates to the Reasoning system.
 
 ## 1. Chunking
 
@@ -27,8 +26,6 @@ The current mock data contains **27 elements**, which are converted into **12 ch
 
 * 8 text chunks
 * 4 table chunks
-
-The document information such as `document_id`, `page`, `section`, and `content_type` is preserved in each chunk.
 
 ## 2. Embeddings
 
@@ -55,46 +52,112 @@ Qdrant uses:
 * Vector size: **384**
 * Distance: **Cosine similarity**
 
-The chunks and their embeddings are inserted into Qdrant, and the query embedding is used to search for the most similar chunks.
+Qdrant is now running as a Docker Compose service on port:
 
-Currently I use:
+`6333`
 
-`QdrantClient(":memory:")`
+The Qdrant data is stored using a Docker volume so that the indexed data is preserved when the container is stopped or removed.
 
-so Qdrant is running in memory for development/testing. Since the project will be containerized, we can later move Qdrant to a Docker Compose service.
+## 4. Retrieval Pipeline
 
-## 4. Dense Retrieval
+The retrieval pipeline combines multiple retrieval methods to improve the quality of the retrieved candidates.
 
-File: `src/retrieval.py`
+The pipeline works as follows:
 
-I implemented `DenseRetriever`.
+1. The user sends a query to the Retrieval API.
+2. Dense Retrieval searches Qdrant using the query embedding.
+3. BM25 performs keyword-based retrieval.
+4. The Dense and BM25 results are combined using Hybrid RRF.
+5. The system over-retrieves up to **30 candidates**.
+6. A Cross-Encoder reranks these candidates.
+7. The final **top 5 candidates** are returned.
 
-It:
+The API endpoint is:
 
-1. Takes the user's query.
-2. Generates its embedding.
-3. Searches Qdrant.
-4. Gets the most similar chunks.
-5. Converts the results into our common `Candidate` format.
-6. Returns the retrieved candidates with their scores and ranks.
+`POST http://localhost:8000/search`
 
-## 5. Testing
+The API runs on port:
 
-I created and tested:
+`8000`
 
-* `tests/test_embeddings.py`
-* `tests/test_vector_store.py`
-* `tests/test_retrieval.py`
+## 5. Retrieval and Reasoning Integration
 
-The dense retrieval test uses:
+The Retrieval and Reasoning systems work together as two separate parts.
 
-`What was the company's revenue in 2024?`
+The Retrieval system is responsible for finding the most relevant evidence, while the Reasoning system uses this evidence to understand the question and produce the final answer.
 
-It retrieves the top 5 results and successfully finds relevant chunks containing the **$120M 2024 revenue** information.
+The overall flow is:
 
-All three tests are currently passing.
+```text
+User Question
+      ↓
+Reasoning System
+      ↓
+Retrieval API
+      ↓
+Dense + BM25
+      ↓
+Hybrid RRF
+      ↓
+Top 30 Candidates
+      ↓
+Cross-Encoder Reranking
+      ↓
+Final Top 5 Candidates
+      ↓
+Reasoning System
+      ↓
+Final Answer + Supporting Evidence
+```
+
+The Reasoning system sends the user's question to the Retrieval API through `/search`.
+
+The Retrieval API returns the final 5 reranked candidates. The Reasoning system then uses these candidates as evidence for its reasoning and final response.
+
+## 6. Indexing
+
+Indexing is used to prepare the current document chunks for retrieval and store them in Qdrant.
+
+Run the indexing command when the data or chunks need to be indexed or re-indexed:
+
+```bash
+docker compose run --rm api python -m <indexing_module>
+```
+
+The indexed data is stored in the Qdrant Docker volume.
+
+## 7. Evaluation
+
+I created a new `evaluation/` folder and a new evaluation dataset for the current corpus.
+
+The previous evaluation dataset was based on **27 chunks**, while the current indexed corpus contains **12 chunks**, so the previous evaluation was not compatible with the current data.
+
+The previous evaluation files were not deleted.
+
+The current evaluation compares:
+
+* Dense Retrieval
+* BM25
+* Hybrid RRF
+* Hybrid RRF + Cross-Encoder
+
+Run the evaluation using:
+
+```bash
+docker compose run --rm api python -m evaluation.evaluation
+```
+
+Current evaluation results:
+
+| Method                       |  Hit@K | Recall@K | Precision@K |    MRR | Avg. Latency |
+| ---------------------------- | -----: | -------: | ----------: | -----: | -----------: |
+| Dense Top 30                 | 1.0000 |   1.0000 |      0.0583 | 0.8958 |     18.60 ms |
+| BM25 Top 30                  | 1.0000 |   1.0000 |      0.0583 | 0.9167 |      0.20 ms |
+| Hybrid RRF Top 30            | 1.0000 |   1.0000 |      0.0583 | 0.8958 |     17.81 ms |
+| Hybrid + Cross-Encoder Top 5 | 1.0000 |   0.8958 |      0.3000 | 0.9375 |    135.98 ms |
+
+The evaluation shows that the retrieval methods successfully find relevant candidates within the top 30. The Cross-Encoder improves the ranking quality when reducing the results to the final 5 candidates, with an increase in latency.
 
 ## Current Status
 
-Dense Retrieval is **implemented and tested successfully**.
-
+The Retrieval system is **implemented, tested, evaluated, Dockerized, and connected to the Reasoning system through the Retrieval API**.

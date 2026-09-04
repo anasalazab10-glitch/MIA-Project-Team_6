@@ -1,27 +1,23 @@
+import os
+import uuid
+
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
-import uuid
 
 from src.schemas import Chunk
 
 
 class VectorStore:
-    def __init__(
-        self,
-        collection_name: str = "ledger_chunks",
-        vector_size: int = 384,
-        host: str = "localhost",
-        port: int = 6333,
-    ):
+    def __init__(self,collection_name: str = "ledger_chunks",vector_size: int = 384,host: str | None = None,port: int | None = None,):
         self.collection_name = collection_name
+        host = host or os.getenv("QDRANT_HOST", "localhost")
+        port = port or int(os.getenv("QDRANT_PORT", "6333"))
 
-        # Connect to the existing Qdrant server
         self.client = QdrantClient(
             host=host,
             port=port,
         )
 
-        # Create collection only if it does not already exist
         if not self.client.collection_exists(self.collection_name):
             self.client.create_collection(
                 collection_name=self.collection_name,

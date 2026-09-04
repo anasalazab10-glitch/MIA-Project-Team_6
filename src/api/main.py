@@ -19,11 +19,9 @@ async def lifespan(app: FastAPI):
 
     # 1. Connect to existing Qdrant
     vector_store = VectorStore(
-        collection_name="ledger_chunks",
-        vector_size=384,
-        host="localhost",
-        port=6333,
-    )
+    collection_name="ledger_chunks",
+    vector_size=384,
+     )
 
     print("Connected to Qdrant.")
 
@@ -45,10 +43,7 @@ async def lifespan(app: FastAPI):
     bm25_retriever = BM25Retriever(chunks)
 
     print("BM25 index built.")
-
-    # --------------------------------------------------
     # 4. Load embedding model
-    # --------------------------------------------------
 
     embedding_model = EmbeddingModel(
         model_name="BAAI/bge-small-en-v1.5"
@@ -56,9 +51,7 @@ async def lifespan(app: FastAPI):
 
     print("Embedding model loaded.")
 
-    # --------------------------------------------------
     # 5. Create Dense Retriever
-    # --------------------------------------------------
 
     dense_retriever = DenseRetriever(
         embedding_model=embedding_model,
@@ -67,9 +60,7 @@ async def lifespan(app: FastAPI):
 
     print("Dense retriever ready.")
 
-    # --------------------------------------------------
     # 6. Create RRF Fusion
-    # --------------------------------------------------
 
     fusion = RRFFusion(
         k=60,
@@ -80,9 +71,7 @@ async def lifespan(app: FastAPI):
         default_top_k=30,
     )
 
-    # --------------------------------------------------
     # 7. Create Hybrid Retriever
-    # --------------------------------------------------
 
     hybrid_retriever = HybridRetriever(
         bm25_retriever=bm25_retriever,
@@ -91,21 +80,14 @@ async def lifespan(app: FastAPI):
     )
 
     print("Hybrid retriever ready.")
-
-    # --------------------------------------------------
     # 8. Create Cross-Encoder Reranker
-    # --------------------------------------------------
-
     reranker = CrossEncoderReranker(
         model_name="cross-encoder/ms-marco-MiniLM-L-6-v2"
     )
 
     print("Reranker ready.")
 
-    # --------------------------------------------------
     # 9. Create final retrieval pipeline
-    # --------------------------------------------------
-
     retrieval_pipeline = RetrievalPipeline(
         hybrid_retriever=hybrid_retriever,
         reranker=reranker,
