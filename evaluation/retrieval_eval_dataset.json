@@ -1,0 +1,50 @@
+[
+{
+"query_id": "q1",
+"query": "What was the operating income for fiscal year 2024?",
+"relevant_chunk_ids": ["doc1_chunk3", "doc1_chunk4"],
+"question_type": "lookup"
+},
+{
+"query_id": "q2",
+"query": "How much was the total revenue in 2024?",
+"relevant_chunk_ids": ["doc1_chunk2", "doc1_chunk3", "doc2_chunk1"],
+"question_type": "lookup"
+},
+{
+"query_id": "q3",
+"query": "How much R&D did the company spend in 2023?",
+"relevant_chunk_ids": ["doc1_chunk5", "doc1_chunk6"],
+"question_type": "acronym"
+},
+{
+"query_id": "q4",
+"query": "Which region recorded the highest revenue growth rate in 2024?",
+"relevant_chunk_ids": ["doc2_chunk2", "doc2_chunk3"],
+"question_type": "lookup"
+},
+{
+"query_id": "q5",
+"query": "What was the net cash generated from operating activities in 2024?",
+"relevant_chunk_ids": ["doc2_chunk4", "doc2_chunk5"],
+"question_type": "lookup"
+},
+{
+"query_id": "q6",
+"query": "When was Northbridge Technologies founded?",
+"relevant_chunk_ids": ["doc1_chunk1"],
+"question_type": "fact"
+},
+{
+"query_id": "q7",
+"query": "What were the total operating expenses in 2024?",
+"relevant_chunk_ids": ["doc1_chunk6"],
+"question_type": "table_lookup"
+},
+{
+"query_id": "q8",
+"query": "What is the projected revenue for fiscal year 2025?",
+"relevant_chunk_ids": ["doc2_chunk6"],
+"question_type": "forward_looking"
+}
+]

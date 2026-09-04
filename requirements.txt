@@ -1,0 +1,36 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+
+# Deep-learning OCR / Layout / Table
+paddlepaddle==2.6.2
+paddleocr==2.7.0.3
+
+# PDF rendering / image handling
+PyMuPDF==1.20.2
+Pillow==10.4.0
+numpy<2
+
+# Table parsing
+lxml==5.3.0
+opencv-python-headless==4.10.0.84
+
+# LLM / agent framework
+langgraph
+langchain
+langchain-core
+groq
+
+# Embeddings / vector search
+sentence-transformers
+qdrant-client
+
+# BM25 retrieval
+rank-bm25
+
+# Validation
+pydantic
+
+# Testing
+pytest
+
