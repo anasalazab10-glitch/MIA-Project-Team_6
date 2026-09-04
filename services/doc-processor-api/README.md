@@ -45,19 +45,39 @@ micromamba run -n ledger-docproc python -m pip install -r services/doc-processor
 (Any Python 3.10 venv works; micromamba is just what we use.)
 
 ## Run
+
+> Note: Paddle/PaddleOCR requires Python 3.10. We typically run inside a micromamba env named `ledger-docproc`.
+
+### Option A (recommended): via micromamba
 From the repo root:
+
 ```bash
 micromamba run -n ledger-docproc uvicorn app.main:app \
-  --app-dir services/doc-processor-api --host 0.0.0.0 --port 8001
+  --app-dir services/doc-processor-api \
+  --host 0.0.0.0 --port 8001
 ```
-Models (~35 MB) are downloaded automatically on first start to `~/.paddleocr`.
+Models (~35 MB) are downloaded automatically on first start to ~/.paddleocr.
+
 
 ## Test
 ```bash
 curl -s http://localhost:8001/health
 curl -s -F "file=@/path/to/d5d739657785641f4689be3d234e0a8f.pdf" http://localhost:8001/process > out.json
 ```
+### Option B (run env binaries directly if micromamba run is broken)
 
+```bash
+cd ~/MIA-Project-Team_6
+ENV="$HOME/.local/share/mamba/envs/ledger-docproc"
+export PYTHONPATH="services/doc-processor-api"
+
+# optional: stabilize on low-memory machines
+export OMP_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+
+$ENV/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
+```
 ## Known limitations (v0.1)
 - The default PubLayNet layout model has limited recall on borderless financial tables
   (adjacent tables may be merged or missed). Being measured against TAT-DQA ground truth
