@@ -20,11 +20,6 @@ def _startup() -> None:
 
 
 def _default_document_id(filename: str | None, pdf_bytes: bytes) -> str:
-    """Default document_id = uploaded filename without extension.
-
-    For TAT-DQA this equals the dataset's doc uid (e.g. d5d739657785641f4689be3d234e0a8f),
-    which keeps citations and evaluation aligned. Falls back to sha1 of the bytes.
-    """
     if filename:
         stem = os.path.splitext(os.path.basename(filename.replace("\\", "/")))[0].strip()
         if stem:
@@ -42,6 +37,7 @@ async def process_pdf(
     file: UploadFile = File(...),
     document_id: str | None = Form(default=None),
     dpi: int = Form(default=200),
+    include_full_page_ocr: bool = Form(default=True),
 ) -> ProcessResponse:
     if processor is None:
         raise HTTPException(status_code=500, detail="Processor not initialized")
@@ -59,5 +55,6 @@ async def process_pdf(
         pdf_bytes=pdf_bytes,
         document_id=doc_id,
         dpi=dpi,
+        include_full_page_ocr=include_full_page_ocr,
     )
     return ProcessResponse(document_id=doc_id, num_pages=num_pages, elements=elements)

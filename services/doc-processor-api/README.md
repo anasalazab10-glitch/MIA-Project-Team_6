@@ -63,3 +63,14 @@ curl -s -F "file=@/path/to/d5d739657785641f4689be3d234e0a8f.pdf" http://localhos
   (adjacent tables may be merged or missed). Being measured against TAT-DQA ground truth
   and improved in a follow-up PR.
 - CPU inference, roughly 5–15 s per page.
+
+## Full-page OCR safety net (default ON)
+This service appends one extra element per page:
+
+- `chunk_id: <document_id>_p<page>_fullocr`
+- `content_type: "text"`
+- `bbox: null`
+- `metadata.full_page_ocr = true`
+
+This is a recall safety net: if the layout model misses a table region, the numbers still appear in `fullocr` text and can be retrieved/cited.
+Downstream retrieval can optionally filter these out (e.g. only index them for BM25).

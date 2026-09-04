@@ -9,7 +9,7 @@ import fitz  # PyMuPDF
 import numpy as np
 from lxml import html as lxml_html
 from PIL import Image
-from paddleocr import PPStructure
+from paddleocr import PaddleOCR, PPStructure
 
 from .schemas import ContentType, Element, TableContent
 
@@ -35,12 +35,6 @@ def clean_text(s: Any) -> str:
 
 
 def extract_text(res_field: Any) -> str:
-    """
-    PaddleOCR may output:
-    - str
-    - list[dict] with {"text": "..."}
-    - list[str]
-    """
     if res_field is None:
         return ""
     if isinstance(res_field, str):
@@ -73,7 +67,6 @@ def _expand_colspan(cell) -> list[str]:
 
 
 def _tr_to_cells(tr) -> list[str]:
-    # include both th and td
     cells = tr.xpath("./th|./td")
     out: list[str] = []
     for c in cells:
@@ -82,10 +75,6 @@ def _tr_to_cells(tr) -> list[str]:
 
 
 def html_table_to_content(table_html: str) -> TableContent:
-    """
-    Parse PaddleOCR table HTML into headers+rows while preserving formatting
-    (e.g., commas in numbers) and avoiding pandas type coercion.
-    """
     root = lxml_html.fromstring(table_html)
     table_nodes = root.xpath(".//table")
     if not table_nodes:
@@ -100,15 +89,11 @@ def html_table_to_content(table_html: str) -> TableContent:
     header_rows = [_tr_to_cells(tr) for tr in thead_trs] if thead_trs else []
     body_rows = [_tr_to_cells(tr) for tr in tbody_trs] if tbody_trs else []
 
-    # fallback if no tbody
     if not body_rows and all_trs:
-        # if we had headers, skip those rows; else treat all as body
         start = len(thead_trs) if thead_trs else 0
         body_rows = [_tr_to_cells(tr) for tr in all_trs[start:]]
 
-    # determine headers
     if header_rows:
-        # If multiple header rows, merge column-wise: "A / B"
         max_cols = max(len(r) for r in header_rows)
         merged: list[str] = []
         for ci in range(max_cols):
@@ -121,11 +106,9 @@ def html_table_to_content(table_html: str) -> TableContent:
             merged.append(" / ".join(parts) if parts else "")
         headers = merged
     else:
-        # no header -> empty headers sized to max columns in body
         max_cols = max((len(r) for r in body_rows), default=0)
         headers = [""] * max_cols
 
-    # Normalize row lengths to header length
     ncols = len(headers)
     norm_rows: list[list[str]] = []
     for r in body_rows:
@@ -133,7 +116,6 @@ def html_table_to_content(table_html: str) -> TableContent:
         if len(r) < ncols:
             r = r + [""] * (ncols - len(r))
         elif len(r) > ncols:
-            # extend headers if row longer
             headers = headers + [""] * (len(r) - ncols)
             ncols = len(headers)
         norm_rows.append(r)
@@ -141,12 +123,37 @@ def html_table_to_content(table_html: str) -> TableContent:
     return TableContent(headers=[clean_text(h) for h in headers], rows=norm_rows)
 
 
-class DocProcessor:
+def page_ocr_to_text(ocr_result: Any) -> str:
     """
-    Holds a single PPStructure engine instance.
-    Locking avoids thread-safety issues with underlying predictors.
+    PaddleOCR.ocr(image) returns something like:
+    [ [ [box_pts], (text, score) ], ... ]
+    We sort roughly top-to-bottom, left-to-right.
     """
+    if not ocr_result:
+        return ""
 
+    # sometimes it's wrapped: [results_for_image]
+    if isinstance(ocr_result, list) and len(ocr_result) == 1 and isinstance(ocr_result[0], list):
+        lines = ocr_result[0]
+    else:
+        lines = ocr_result
+
+    extracted = []
+    for line in lines:
+        try:
+            box, (text, score) = line
+            xs = [p[0] for p in box]
+            ys = [p[1] for p in box]
+            x0, y0 = min(xs), min(ys)
+            extracted.append((y0, x0, clean_text(text)))
+        except Exception:
+            continue
+
+    extracted.sort(key=lambda t: (t[0], t[1]))
+    return "\n".join([t[2] for t in extracted if t[2]]).strip()
+
+
+class DocProcessor:
     def __init__(self, lang: str = "en"):
         self.lang = lang
         self._engine = PPStructure(
@@ -156,6 +163,8 @@ class DocProcessor:
             table=True,
             ocr=True,
         )
+        # Full-page OCR fallback (only used when include_full_page_ocr=True)
+        self._page_ocr = PaddleOCR(lang=lang, show_log=False, use_angle_cls=False)
         self._lock = threading.Lock()
 
     def process_pdf(
@@ -163,6 +172,7 @@ class DocProcessor:
         pdf_bytes: bytes,
         document_id: str | None = None,
         dpi: int = 200,
+        include_full_page_ocr: bool = False,
     ) -> tuple[str, int, list[Element]]:
         doc_id = document_id or sha1_id(pdf_bytes)
 
@@ -171,7 +181,7 @@ class DocProcessor:
             all_elements: list[Element] = []
 
             for page_index in range(doc.page_count):
-                page_num = page_index + 1  # 1-based output
+                page_num = page_index + 1
 
                 page = doc[page_index]
                 pix = page.get_pixmap(dpi=dpi)
@@ -181,13 +191,11 @@ class DocProcessor:
 
                 blocks = self._engine(np_img)
 
-                # Sort blocks top-to-bottom, left-to-right for consistent section assignment
                 def key_fn(b: dict[str, Any]) -> tuple[float, float]:
                     bb = b.get("bbox") or [0, 0, 0, 0]
                     return (bb[1], bb[0])
 
                 blocks = sorted(blocks, key=key_fn)
-
                 current_section: str | None = None
 
                 for bi, b in enumerate(blocks):
@@ -207,7 +215,6 @@ class DocProcessor:
                     else:
                         content = extract_text(b.get("res"))
 
-                    # Nearest-title-above section rule
                     if content_type == ContentType.HEADING:
                         if isinstance(content, str) and content.strip():
                             current_section = content.strip()
@@ -215,22 +222,45 @@ class DocProcessor:
                     else:
                         section = current_section
 
-                    el = Element(
-                        chunk_id=f"{doc_id}_p{page_num}_b{bi}",
-                        document_id=doc_id,
-                        page=[page_num],
-                        section=section,
-                        content_type=content_type,
-                        content=content,
-                        bbox=bbox_norm,
-                        metadata={
-                            "source": "paddleocr_ppstructure",
-                            "block_type": btype,
-                            "bbox_unit": "normalized",
-                            "render_dpi": dpi,
-                            "page_image_size": [w, h],
-                        },
+                    all_elements.append(
+                        Element(
+                            chunk_id=f"{doc_id}_p{page_num}_b{bi}",
+                            document_id=doc_id,
+                            page=[page_num],
+                            section=section,
+                            content_type=content_type,
+                            content=content,
+                            bbox=bbox_norm,
+                            metadata={
+                                "source": "paddleocr_ppstructure",
+                                "block_type": btype,
+                                "bbox_unit": "normalized",
+                                "render_dpi": dpi,
+                                "page_image_size": [w, h],
+                            },
+                        )
                     )
-                    all_elements.append(el)
+
+                if include_full_page_ocr:
+                    ocr_res = self._page_ocr.ocr(np_img, cls=False)
+                    page_text = page_ocr_to_text(ocr_res)
+
+                    all_elements.append(
+                        Element(
+                            chunk_id=f"{doc_id}_p{page_num}_fullocr",
+                            document_id=doc_id,
+                            page=[page_num],
+                            section=None,
+                            content_type=ContentType.TEXT,
+                            content=page_text,
+                            bbox=None,
+                            metadata={
+                                "source": "paddleocr_full_page_ocr",
+                                "full_page_ocr": True,
+                                "render_dpi": dpi,
+                                "page_image_size": [w, h],
+                            },
+                        )
+                    )
 
         return doc_id, doc.page_count, all_elements
