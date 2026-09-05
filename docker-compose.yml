@@ -38,6 +38,14 @@ services:
     ports:
       - "8002:8000"
 
+  validator:
+    build:
+      context: ./services/validator-service
+      dockerfile: Dockerfile
+    container_name: ledger-validator
+    ports:
+      - "8004:8000"
+
   orchestrator:
     build:
       context: ./services/orchestrator
@@ -49,6 +57,7 @@ services:
       - dense-retrieval
       - reasoning
       - doc-processor
+      - validator
 
   ui:
     build:
