@@ -5,3 +5,5 @@ pydantic
 groq
 uvicorn
 fastapi
+dotenv
+httpx
