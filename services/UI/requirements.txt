@@ -1,0 +1,4 @@
+gradio==6.26.0
+requests
+python-dotenv
+ 
