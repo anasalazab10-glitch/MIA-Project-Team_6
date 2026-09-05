@@ -115,3 +115,33 @@ def score_prediction(
     em = exact_match(predicted_value, gold_value)
     f1 = token_f1(str(predicted_value), str(gold_value))
     return em, f1, None
+
+
+def compute_page_retrieval_metrics(
+    retrieved_pages: list[tuple[str, int]],
+    gold_pages: list[tuple[str, int]],
+    k: int,
+) -> dict[str, float]:
+    """
+    Page-level retrieval metrics.
+
+    retrieved_pages: ranked list of (document_id, page)
+    gold_pages: set/list of relevant (document_id, page)
+    """
+    gold_set = set(gold_pages)
+    retrieved_at_k = retrieved_pages[:k]
+
+    relevant_retrieved = [p for p in retrieved_at_k if p in gold_set]
+    num_rel_ret = len(relevant_retrieved)
+
+    hit = 1.0 if num_rel_ret > 0 else 0.0
+    recall = (num_rel_ret / len(gold_set)) if gold_set else 0.0
+    precision = (num_rel_ret / k) if k > 0 else 0.0
+
+    rr = 0.0
+    for rank, p in enumerate(retrieved_pages, start=1):
+        if p in gold_set:
+            rr = 1.0 / rank
+            break
+
+    return {"hit": hit, "recall": recall, "precision": precision, "rr": rr}

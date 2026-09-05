@@ -115,6 +115,11 @@ class PerItemResult(BaseModel):
     em: float | None = None
     f1: float | None = None
     numeric_ok: bool | None = None
+    # Page-level retrieval metrics (doc_uid+page) - filled when retrieved pages are available
+    retrieval_hit: float | None = None
+    retrieval_recall: float | None = None
+    retrieval_precision: float | None = None
+    retrieval_rr: float | None = None
     error: str | None = None
 
 
@@ -124,4 +129,9 @@ class RunBenchmarkResponse(BaseModel):
     avg_em: float | None = None
     avg_f1: float | None = None
     numeric_accuracy: float | None = None
+    # Retrieval metrics (page-level). These will be non-null once orchestrator/retrieval integration is implemented.
+    avg_hit_at_k: float | None = None
+    avg_recall_at_k: float | None = None
+    avg_precision_at_k: float | None = None
+    mrr_at_k: float | None = None
     results: list[PerItemResult]

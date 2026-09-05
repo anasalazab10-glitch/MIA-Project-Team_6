@@ -16,7 +16,7 @@ from .schemas import (
     RunBenchmarkRequest,
     RunBenchmarkResponse,
 )
-from .scoring import score_prediction
+from .scoring import score_prediction, compute_page_retrieval_metrics
 
 app = FastAPI(title="eval-service", version="0.2.0")
 
@@ -87,6 +87,12 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
     f1s: list[float] = []
     numeric_flags: list[bool] = []
 
+    # Retrieval metrics accumulators (page-level)
+    hits_k: list[float] = []
+    recalls_k: list[float] = []
+    precisions_k: list[float] = []
+    rrs: list[float] = []
+
     for item in items:
         t0 = time.time()
 
@@ -96,6 +102,15 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
             is_answerable=item.is_answerable,
             ground_truth_answer=item.ground_truth_answer,
         )
+
+        # Gold evidence pages (doc_uid + page)
+        gold_pages = [
+            (e.source_doc_uid, e.source_page)
+            for e in item.gold_evidence
+            if e.source_doc_uid and e.source_page is not None
+        ]
+        # TODO: once orchestrator/retrieval integration is done, fill retrieved_pages from actual retrieval output
+        retrieved_pages: list[tuple[str, int]] = []
 
         trace = None
         if lf:
@@ -123,6 +138,18 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
             if num_ok is not None:
                 numeric_flags.append(num_ok)
 
+            # Page-level retrieval metrics (only if retrieved_pages is populated)
+            if retrieved_pages and gold_pages:
+                m = compute_page_retrieval_metrics(retrieved_pages, gold_pages, k=5)
+                per.retrieval_hit = m['hit']
+                per.retrieval_recall = m['recall']
+                per.retrieval_precision = m['precision']
+                per.retrieval_rr = m['rr']
+                hits_k.append(m['hit'])
+                recalls_k.append(m['recall'])
+                precisions_k.append(m['precision'])
+                rrs.append(m['rr'])
+
             if trace:
                 trace.score(name="em", value=em)
                 trace.score(name="f1", value=f1)
@@ -144,11 +171,20 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
     avg_f1 = sum(f1s) / len(f1s) if f1s else None
     numeric_acc = sum(1 for x in numeric_flags if x) / len(numeric_flags) if numeric_flags else None
 
+    avg_hit_at_k = (sum(hits_k) / len(hits_k)) if hits_k else None
+    avg_recall_at_k = (sum(recalls_k) / len(recalls_k)) if recalls_k else None
+    avg_precision_at_k = (sum(precisions_k) / len(precisions_k)) if precisions_k else None
+    mrr_at_k = (sum(rrs) / len(rrs)) if rrs else None
+
     return RunBenchmarkResponse(
         num_items=len(items),
         num_scored=len(ems),
         avg_em=avg_em,
         avg_f1=avg_f1,
         numeric_accuracy=numeric_acc,
+        avg_hit_at_k=avg_hit_at_k,
+        avg_recall_at_k=avg_recall_at_k,
+        avg_precision_at_k=avg_precision_at_k,
+        mrr_at_k=mrr_at_k,
         results=results,
     )
