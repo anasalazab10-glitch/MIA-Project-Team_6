@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # -----------------------------
@@ -14,6 +14,7 @@ class Scale(str, Enum):
     THOUSAND = "thousand"
     MILLION = "million"
     BILLION = "billion"
+    PERCENT = "percent"
     NONE = "none"
 
 
@@ -25,6 +26,22 @@ class GoldEvidence(BaseModel):
 
 
 class BenchmarkItem(BaseModel):
+    @field_validator("scale", mode="before")
+    @classmethod
+    def coerce_scale(cls, v):
+        # Accept '', None, 'none', 'percent', etc.
+        if v is None:
+            return Scale.NONE
+        s = str(v).strip().lower()
+        if s == "" or s == "none":
+            return Scale.NONE
+        if s == "percent":
+            return Scale.PERCENT
+        if s in ("thousand", "million", "billion"):
+            return Scale(s)
+        # Unknown scale -> treat as none (don’t crash eval)
+        return Scale.NONE
+
     question_id: str
     question_text: str
     is_answerable: bool = True

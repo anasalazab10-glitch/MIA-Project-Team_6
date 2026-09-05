@@ -15,6 +15,7 @@ def scale_multiplier(scale: Scale) -> float:
         Scale.THOUSAND: 1_000.0,
         Scale.MILLION: 1_000_000.0,
         Scale.BILLION: 1_000_000_000.0,
+        Scale.PERCENT: 1.0,
     }[scale]
 
 
