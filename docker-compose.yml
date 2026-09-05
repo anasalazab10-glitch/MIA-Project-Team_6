@@ -1,0 +1,64 @@
+services:
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ledger-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+
+  dense-retrieval:
+    build:
+      context: ./services/dense-retrieval
+      dockerfile: Dockerfile
+    container_name: ledger-dense-retrieval
+    ports:
+      - "8000:8000"
+    environment:
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+    depends_on:
+      - qdrant
+
+  reasoning:
+    build:
+      context: ./services/reasoning
+      dockerfile: Dockerfile
+    container_name: ledger-reasoning
+    ports:
+      - "8001:8000"
+
+  doc-processor:
+    build:
+      context: ./services/doc-processor-api
+      dockerfile: Dockerfile
+    container_name: ledger-doc-processor
+    ports:
+      - "8002:8000"
+
+  orchestrator:
+    build:
+      context: ./services/orchestrator
+      dockerfile: Dockerfile
+    container_name: ledger-orchestrator
+    ports:
+      - "8003:8000"
+    depends_on:
+      - dense-retrieval
+      - reasoning
+      - doc-processor
+
+  ui:
+    build:
+      context: ./services/ui
+      dockerfile: Dockerfile
+    container_name: ledger-ui
+    ports:
+      - "7860:7860"
+    depends_on:
+      - orchestrator
+
+volumes:
+  qdrant_storage:
