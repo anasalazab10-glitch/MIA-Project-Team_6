@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
+from src.indexing import index_elements
 
-from src.chunking import create_chunks
 from src.schemas import (
     IndexRequest,
     IndexResponse,
@@ -73,24 +73,37 @@ def index(request: IndexRequest):
             detail="Elements list cannot be empty.",
         )
 
-    doc_id = request.document_id or request.elements[0].get("document_id", "doc_unknown")
+    doc_id = request.document_id or request.elements[0].get(
+        "document_id",
+        "doc_unknown",
+    )
+
     for el in request.elements:
         if "document_id" not in el:
             el["document_id"] = doc_id
 
-    chunks = create_chunks(request.elements)
-    if not chunks:
-        raise HTTPException(
-            status_code=400,
-            detail="No chunks could be generated from the elements.",
+    try:
+        # Chunking + embeddings + Qdrant
+        # Returns the exact chunks that were indexed.
+        chunks = index_elements(
+            elements=request.elements,
+            embedding_model=embedding_model,
+            vector_store=vector_store,
         )
 
-    if embedding_model and vector_store:
-        embeddings = embedding_model.encode_chunks(chunks)
-        vector_store.add_chunks(chunks, embeddings)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
 
     if bm25_retriever:
-        existing_chunks = getattr(bm25_retriever, "chunks", [])
+        existing_chunks = getattr(
+            bm25_retriever,
+            "chunks",
+            [],
+        )
+
         updated_chunks = existing_chunks + chunks
         bm25_retriever.index(updated_chunks)
 
@@ -98,5 +111,8 @@ def index(request: IndexRequest):
         status="indexed",
         document_id=doc_id,
         num_chunks=len(chunks),
-        message=f"Successfully indexed {len(chunks)} chunks into vector store and BM25.",
+        message=(
+            f"Successfully indexed {len(chunks)} chunks "
+            "into vector store and BM25."
+        ),
     )
