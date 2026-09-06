@@ -100,9 +100,12 @@ class StrictAnswer(BaseModel):
 # -----------------------------
 
 class RunBenchmarkRequest(BaseModel):
-    orchestrator_url: str | None = None  # later: e.g. http://orchestrator:8000
+    orchestrator_url: str | None = None  # e.g. http://localhost:8003 or http://orchestrator:8000
     limit: int | None = Field(default=None, ge=1, le=100000)
     langfuse_project: str | None = None  # optional label
+    # Option A support: ask orchestrator to return retrieval candidates used (if orchestrator supports it)
+    debug: bool = False
+    retrieval_k: int = Field(default=5, ge=1, le=100)
 
 
 class PerItemResult(BaseModel):

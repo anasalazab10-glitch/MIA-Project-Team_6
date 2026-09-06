@@ -48,7 +48,7 @@ def load_benchmark() -> list[BenchmarkItem]:
     return [BenchmarkItem.model_validate(x) for x in raw]
 
 
-def call_orchestrator(orchestrator_url: str, question_text: str, question_id: str, document_id: str | None = None) -> dict[str, Any]:
+def call_orchestrator(orchestrator_url: str, question_text: str, question_id: str, document_id: str | None = None, debug: bool = False) -> dict[str, Any]:
     """
     Calls Orchestrator POST /run.
 
@@ -62,10 +62,79 @@ def call_orchestrator(orchestrator_url: str, question_text: str, question_id: st
     payload = {"question": question_text, "session_id": question_id}
     if document_id:
         payload["document_id"] = document_id
+    if debug:
+        payload["debug"] = True
 
     r = requests.post(url, json=payload, timeout=120)
     r.raise_for_status()
     return r.json()
+
+
+
+def _coerce_page_to_int(p) -> int | None:
+    if p is None:
+        return None
+    if isinstance(p, int):
+        return p
+    if isinstance(p, list) and p and isinstance(p[0], int):
+        return p[0]
+    # sometimes string
+    try:
+        return int(p)
+    except Exception:
+        return None
+
+
+def extract_retrieved_pages(orchestrator_response: dict[str, Any]) -> list[tuple[str, int]]:
+    """
+    Option-A ready: tries to extract ranked retrieved candidates from orchestrator response.
+
+    Supported shapes (any of these):
+    - response["retrieval_debug"]["calls"][i]["candidates"][j] with keys {document_id, page}
+    - response["retrieval_debug"]["candidates"][j]
+    - response["retrieved_candidates"][j]
+    """
+    retrieved_pages: list[tuple[str, int]] = []
+
+    rd = orchestrator_response.get("retrieval_debug") or {}
+    calls = rd.get("calls")
+
+    def add_candidate(c: dict[str, Any]):
+        doc_id = c.get("document_id") or c.get("doc_uid")
+        page_i = _coerce_page_to_int(c.get("page"))
+        if doc_id and page_i is not None:
+            retrieved_pages.append((str(doc_id), int(page_i)))
+
+    if isinstance(calls, list):
+        for call in calls:
+            cands = call.get("candidates", [])
+            if isinstance(cands, list):
+                for c in cands:
+                    if isinstance(c, dict):
+                        add_candidate(c)
+
+    # fallback: rd.candidates
+    cands = rd.get("candidates")
+    if isinstance(cands, list):
+        for c in cands:
+            if isinstance(c, dict):
+                add_candidate(c)
+
+    # fallback: top-level retrieved_candidates
+    top = orchestrator_response.get("retrieved_candidates")
+    if isinstance(top, list):
+        for c in top:
+            if isinstance(c, dict):
+                add_candidate(c)
+
+    # de-duplicate while preserving order
+    seen = set()
+    uniq = []
+    for p in retrieved_pages:
+        if p not in seen:
+            seen.add(p)
+            uniq.append(p)
+    return uniq
 
 
 @app.get("/health")
@@ -170,10 +239,15 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
                 orchestrator_url=orch_url,
                 question_text=item.question_text,
                 question_id=item.question_id,
+                debug=req.debug,
             )
 
             per.predicted_answer = pred
             per.predicted_answer_type = str(pred.get("answer_type"))
+
+            # If orchestrator returned retrieval candidates (Option A), compute retrieval metrics
+            if req.debug:
+                retrieved_pages = extract_retrieved_pages(pred)
 
             # Extract predicted value based on strict answer schema
             at = str(pred.get("answer_type", "insufficient_evidence"))
@@ -200,7 +274,7 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
 
             # Page-level retrieval metrics (only if retrieved_pages is populated)
             if retrieved_pages and gold_pages:
-                m = compute_page_retrieval_metrics(retrieved_pages, gold_pages, k=5)
+                m = compute_page_retrieval_metrics(retrieved_pages, gold_pages, k=req.retrieval_k)
                 per.retrieval_hit = m['hit']
                 per.retrieval_recall = m['recall']
                 per.retrieval_precision = m['precision']
