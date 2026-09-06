@@ -61,6 +61,39 @@ def call_orchestrator(orchestrator_url: str, question_text: str) -> dict[str, An
 def health():
     return {"status": "ok"}
 
+@app.get("/langfuse_status")
+def langfuse_status():
+    return {
+        "langfuse_enabled": bool(LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY),
+        "langfuse_host": LANGFUSE_HOST or "default",
+    }
+
+
+@app.post("/langfuse_ping")
+def langfuse_ping():
+    lf = get_langfuse()
+    if not lf:
+        raise HTTPException(status_code=500, detail="Langfuse not configured")
+
+    try:
+        t = lf.trace(name="ping", input={"ok": True})
+
+        # Create an observation so it appears in the Tracing UI
+        span = t.span(name="ping_span", input={"step": "start"})
+        if hasattr(span, "end"):
+            span.end(output={"step": "done"})
+        else:
+            span.update(output={"step": "done"})
+
+        t.score(name="ping_score", value=1.0)
+        t.update(output={"status": "sent"})
+        lf.flush()
+
+        return {"sent": True}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"sent": False, "error": repr(e)})
+
+
 
 @app.get("/benchmark_info")
 def benchmark_info():
@@ -162,7 +195,7 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
                 trace.score(name="error", value=1.0)
         finally:
             if trace:
-                trace.end(output={"result": per.model_dump()})
+                trace.update(output={"result": per.model_dump()})
             _ = t0  # reserved for latency later
 
         results.append(per)
@@ -176,7 +209,7 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
     avg_precision_at_k = (sum(precisions_k) / len(precisions_k)) if precisions_k else None
     mrr_at_k = (sum(rrs) / len(rrs)) if rrs else None
 
-      if lf:
+    if lf:
         lf.flush()
 
     return RunBenchmarkResponse(
