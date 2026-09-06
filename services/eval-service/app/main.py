@@ -28,6 +28,8 @@ BENCHMARK_PATH = os.getenv(
 LANGFUSE_HOST = os.getenv("LANGFUSE_HOST")
 LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY")
+ORCHESTRATOR_URL_DEFAULT = os.getenv("ORCHESTRATOR_URL", "http://localhost:8003")
+RETRIEVAL_URL_DEFAULT = os.getenv("RETRIEVAL_URL")  # optional, used later for Recall@K/MRR
 
 
 def get_langfuse() -> Langfuse | None:
