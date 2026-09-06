@@ -29,7 +29,7 @@ LANGFUSE_HOST = os.getenv("LANGFUSE_HOST")
 LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY")
 ORCHESTRATOR_URL_DEFAULT = os.getenv("ORCHESTRATOR_URL", "http://localhost:8003")
-RETRIEVAL_URL_DEFAULT = os.getenv("RETRIEVAL_URL")  # optional, used later for Recall@K/MRR
+RETRIEVAL_URL_DEFAULT = os.getenv("RETRIEVAL_URL")  # optional, for retrieval metrics later
 
 
 def get_langfuse() -> Langfuse | None:
@@ -48,15 +48,24 @@ def load_benchmark() -> list[BenchmarkItem]:
     return [BenchmarkItem.model_validate(x) for x in raw]
 
 
-def call_orchestrator(orchestrator_url: str, question_text: str) -> dict[str, Any]:
+def call_orchestrator(orchestrator_url: str, question_text: str, question_id: str, document_id: str | None = None) -> dict[str, Any]:
     """
-    TODO: update once orchestrator endpoints are finalized.
-    Expected orchestrator behavior: accept a natural language question and return strict answer JSON.
+    Calls Orchestrator POST /run.
+
+    Orchestrator request:
+      {"question": "...", "session_id": "...", "document_id": optional}
+
+    Returns orchestrator JSON response:
+      {answer_type, evidence, params, validation_status, latency_ms, ...}
     """
-    raise NotImplementedError(
-        "Orchestrator endpoint not integrated yet. "
-        "Provide orchestrator contract and implement call_orchestrator()."
-    )
+    url = f"{orchestrator_url.rstrip('/')}/run"
+    payload = {"question": question_text, "session_id": question_id}
+    if document_id:
+        payload["document_id"] = document_id
+
+    r = requests.post(url, json=payload, timeout=120)
+    r.raise_for_status()
+    return r.json()
 
 
 @app.get("/health")
@@ -156,16 +165,32 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
             )
 
         try:
-            if not req.orchestrator_url:
-                raise HTTPException(status_code=501, detail="orchestrator_url not provided yet")
-
-            # TODO: enable when orchestrator contract is known
-            pred = call_orchestrator(req.orchestrator_url, item.question_text)
+            orch_url = req.orchestrator_url or ORCHESTRATOR_URL_DEFAULT
+            pred = call_orchestrator(
+                orchestrator_url=orch_url,
+                question_text=item.question_text,
+                question_id=item.question_id,
+            )
 
             per.predicted_answer = pred
-            # scoring expects predicted_value; once strict schema is known, extract from pred
-            predicted_value = pred.get("params", {}).get("value", pred)
-            em, f1, num_ok = score_prediction(predicted_value, item.ground_truth_answer, item.scale)
+            per.predicted_answer_type = str(pred.get("answer_type"))
+
+            # Extract predicted value based on strict answer schema
+            at = str(pred.get("answer_type", "insufficient_evidence"))
+            params = pred.get("params") or {}
+
+            if at in ("direct", "calculated"):
+                predicted_value = params.get("value")
+            elif at == "multi_span":
+                predicted_value = params.get("values")
+            else:
+                predicted_value = None  # insufficient_evidence or unknown
+
+            # Special case: unanswerable gold + insufficient prediction => correct
+            if (item.is_answerable is False) and (at == "insufficient_evidence"):
+                em, f1, num_ok = 1.0, 1.0, None
+            else:
+                em, f1, num_ok = score_prediction(predicted_value, item.ground_truth_answer, item.scale)
 
             per.em, per.f1, per.numeric_ok = em, f1, num_ok
             ems.append(em)
