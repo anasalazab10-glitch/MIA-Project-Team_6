@@ -94,18 +94,99 @@ def chat_respond(message: str, history: List[Dict[str, str]]) -> Tuple[str, List
     return "", history
 
 
+def fetch_documents() -> List[List[Any]]:
+    try:
+        res = requests.get(f"{ORCHESTRATOR_URL}/documents", timeout=10)
+        if res.status_code == 200:
+            docs = res.json()
+            if not docs:
+                return [["No documents indexed yet.", "", "", "", ""]]
+            return [
+                [
+                    d.get("document_id", ""),
+                    d.get("filename", ""),
+                    d.get("num_pages", 0),
+                    d.get("num_tables", 0),
+                    d.get("created_at", ""),
+                ]
+                for d in docs
+            ]
+        else:
+            print(f"[fetch_documents] orchestrator returned status {res.status_code}: {res.text}")
+    except Exception as exc:
+        print(f"[fetch_documents] orchestrator call failed: {exc}")
+
+    return [["Orchestrator not reachable yet", "-", "-", "-", "-"]]
+
+
+def fetch_dashboard() -> Tuple[str, List[List[Any]]]:
+    try:
+        res = requests.get(f"{ORCHESTRATOR_URL}/dashboard/stats", timeout=10)
+        if res.status_code == 200:
+            stats = res.json()
+            summary = (
+                f"**Total documents:** {stats.get('total_documents', 0)}  \n"
+                f"**Total tables:** {stats.get('total_tables', 0)}  \n"
+                f"**Total elements:** {stats.get('total_elements', 0)}"
+            )
+            recent = stats.get("recent_queries", [])
+            rows = [
+                [
+                    q.get("question", "")[:60],
+                    q.get("answer_type", ""),
+                    "✅" if q.get("validation_passed") else "❌",
+                    f"{q.get('latency_ms', 0):.0f} ms",
+                    q.get("timestamp", ""),
+                ]
+                for q in reversed(recent)
+            ]
+            return summary, rows
+        else:
+            print(f"[fetch_dashboard] orchestrator returned status {res.status_code}: {res.text}")
+    except Exception as exc:
+        print(f"[fetch_dashboard] orchestrator call failed: {exc}")
+
+    return (
+        "_Orchestrator not reachable yet — showing no data._",
+        [["-", "-", "-", "-", "-"]],
+    )
+
+
 with gr.Blocks(title="LEDGER - Financial Document Intelligence Agent") as demo:
     gr.Markdown("# LEDGER — Financial Document Intelligence Agent")
 
-    chatbot = gr.Chatbot(height=500)
-    msg = gr.Textbox(
-        placeholder="Ask a question about the indexed financial reports...",
-        label="Your question",
-    )
-    clear = gr.Button("Clear chat")
+    with gr.Tab("Chat"):
+        chatbot = gr.Chatbot(height=500)
+        msg = gr.Textbox(
+            placeholder="Ask a question about the indexed financial reports...",
+            label="Your question",
+        )
+        clear = gr.Button("Clear chat")
 
-    msg.submit(chat_respond, inputs=[msg, chatbot], outputs=[msg, chatbot])
-    clear.click(lambda: [], outputs=chatbot)
+        msg.submit(chat_respond, inputs=[msg, chatbot], outputs=[msg, chatbot])
+        clear.click(lambda: [], outputs=chatbot)
+
+    with gr.Tab("Documents"):
+        gr.Markdown("### Indexed Documents")
+        doc_table = gr.Dataframe(
+            headers=["Document ID", "Filename", "Pages", "Tables", "Created At"],
+            value=fetch_documents(),
+            interactive=False,
+        )
+        refresh_docs_btn = gr.Button("Refresh")
+        refresh_docs_btn.click(fetch_documents, outputs=doc_table)
+
+    with gr.Tab("Dashboard"):
+        gr.Markdown("### Corpus Overview")
+        summary_md = gr.Markdown(fetch_dashboard()[0])
+        gr.Markdown("### Recent Queries")
+        queries_table = gr.Dataframe(
+            headers=["Question", "Answer Type", "Validated", "Latency", "Timestamp"],
+            value=fetch_dashboard()[1],
+            interactive=False,
+        )
+        refresh_dashboard_btn = gr.Button("Refresh")
+        refresh_dashboard_btn.click(fetch_dashboard, outputs=[summary_md, queries_table])
 
 
 if __name__ == "__main__":
