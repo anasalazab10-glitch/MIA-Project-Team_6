@@ -46,6 +46,14 @@ services:
     ports:
       - "8004:8000"
 
+  eval-service:
+    build:
+      context: ./services/eval-service
+      dockerfile: Dockerfile
+    container_name: ledger-eval-service
+    ports:
+      - "8005:8000"
+
   orchestrator:
     build:
       context: ./services/orchestrator
