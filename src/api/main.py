@@ -27,19 +27,22 @@ async def lifespan(app: FastAPI):
 
 
     # 2. Load existing chunks from Qdrant
-    chunks = vector_store.get_all_chunks()
+    try:
+        chunks = vector_store.get_all_chunks()
+    except Exception as exc:
+        print(f"Warning connecting to Qdrant: {exc}")
+        chunks = []
 
     if not chunks:
-        raise RuntimeError(
-            "No chunks found in Qdrant. "
-            "Run the indexing pipeline first."
+        print(
+            "Notice: No chunks found in Qdrant yet. "
+            "Retrieval pipeline starting with empty index; "
+            "ready to receive chunks via /index."
         )
-
-    print(f"Loaded {len(chunks)} chunks from Qdrant.")
-
+    else:
+        print(f"Loaded {len(chunks)} chunks from Qdrant.")
 
     # 3. Build BM25 index from existing chunks
-
     bm25_retriever = BM25Retriever(chunks)
 
     print("BM25 index built.")
@@ -95,8 +98,13 @@ async def lifespan(app: FastAPI):
         final_top_k=5,
     )
 
-    # Give pipeline to routes
-    set_pipeline(retrieval_pipeline)
+    # Give pipeline and indexing components to routes
+    set_pipeline(
+        retrieval_pipeline=retrieval_pipeline,
+        emb_model=embedding_model,
+        vec_store=vector_store,
+        bm25=bm25_retriever,
+    )
 
     print("Full retrieval pipeline is ready.")
 

@@ -125,19 +125,20 @@ def create_chunks(elements: list[dict[str, Any]],max_chars: int = DEFAULT_MAX_CH
 
         # Preserve the original processed element IDs.
         source_element_ids = [
-            element["element_id"]
+            element.get("element_id") or element.get("chunk_id")
             for element in current_text_elements
-            if "element_id" in element
+            if element.get("element_id") or element.get("chunk_id")
         ]
 
         # Preserve all pages touched by the text.
-        source_pages = sorted(
-            {
-                element["page"]
-                for element in current_text_elements
-                if "page" in element
-            }
-        )
+        source_pages_set: set[int] = set()
+        for element in current_text_elements:
+            p = element.get("page")
+            if isinstance(p, list):
+                source_pages_set.update(p)
+            elif isinstance(p, int):
+                source_pages_set.add(p)
+        source_pages = sorted(source_pages_set) or [1]
 
         for text_chunk in text_chunks:
             chunks.append(
@@ -213,23 +214,24 @@ def create_chunks(elements: list[dict[str, Any]],max_chars: int = DEFAULT_MAX_CH
                 element["content"]
             )
 
+            p = element.get("page")
+            table_pages = sorted(set(p)) if isinstance(p, list) else [p] if isinstance(p, int) else [1]
+            elem_id = element.get("element_id") or element.get("chunk_id")
+            source_elem_ids = [elem_id] if elem_id else []
+
             chunks.append(
                 Chunk(
                     chunk_id=next_chunk_id(document_id),
                     document_id=document_id,
-                    page=[element["page"]],
+                    page=table_pages,
                     section=current_section or element.get("section"),
                     content_type=ContentType.TABLE,
                     content=table,
                     bbox=element.get("bbox"),
                     metadata={
                         **element.get("metadata", {}),
-                        "source_element_ids": (
-                            [element["element_id"]]
-                            if "element_id" in element
-                            else []
-                        ),
-                        "source_pages": [element["page"]],
+                        "source_element_ids": source_elem_ids,
+                        "source_pages": table_pages,
                     },
                 )
             )

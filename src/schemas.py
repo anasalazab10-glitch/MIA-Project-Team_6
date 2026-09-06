@@ -176,3 +176,21 @@ class RetrievalResponse(BaseModel):
     query: str
     retrieval_method: RetrievalMethod
     candidates: list[Candidate]
+
+
+# ---------------------------------------------------------------------------
+# Indexing Request & Response Schemas
+# ---------------------------------------------------------------------------
+
+class IndexRequest(BaseModel):
+    """Request payload for indexing document elements."""
+    document_id: str | None = None
+    elements: list[dict[str, Any]]
+
+
+class IndexResponse(BaseModel):
+    """Response returned after indexing elements."""
+    status: str
+    document_id: str
+    num_chunks: int
+    message: str
