@@ -176,6 +176,9 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
     avg_precision_at_k = (sum(precisions_k) / len(precisions_k)) if precisions_k else None
     mrr_at_k = (sum(rrs) / len(rrs)) if rrs else None
 
+      if lf:
+        lf.flush()
+
     return RunBenchmarkResponse(
         num_items=len(items),
         num_scored=len(ems),
