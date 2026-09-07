@@ -1,14 +1,5 @@
 services:
 
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: ledger-qdrant
-    ports:
-      - "6333:6333"
-      - "6334:6334"
-    volumes:
-      - qdrant_storage:/qdrant/storage
-
   dense-retrieval:
     build:
       context: ./services/dense-retrieval
@@ -17,10 +8,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      QDRANT_HOST: qdrant
-      QDRANT_PORT: 6333
-    depends_on:
-      - qdrant
+      QDRANT_URL: ${QDRANT_URL}
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+    restart: unless-stopped
 
   reasoning:
     build:
@@ -32,6 +22,10 @@ services:
     environment:
       GROQ_API_KEY: ${GROQ_API_KEY}
       RETRIEVAL_API_URL: http://dense-retrieval:8000
+    depends_on:
+      - dense-retrieval
+    restart: unless-stopped
+
   doc-processor:
     build:
       context: ./services/doc-processor-api
@@ -39,6 +33,7 @@ services:
     container_name: ledger-doc-processor
     ports:
       - "8002:8000"
+    restart: unless-stopped
 
   validator:
     build:
@@ -47,6 +42,7 @@ services:
     container_name: ledger-validator
     ports:
       - "8004:8000"
+    restart: unless-stopped
 
   eval-service:
     build:
@@ -58,6 +54,9 @@ services:
     environment:
       BENCHMARK_PATH: /app/data/benchmark_100.json
       ORCHESTRATOR_URL: http://orchestrator:8000
+    depends_on:
+      - orchestrator
+    restart: unless-stopped
 
   orchestrator:
     build:
@@ -76,18 +75,15 @@ services:
       - reasoning
       - doc-processor
       - validator
+    restart: unless-stopped
+
   ui:
-   build:
-    context: ./services/ui
-    dockerfile: Dockerfile
-   container_name: ledger-ui
-   ports:
-    - "7860:7860"
-   environment:
-    ORCHESTRATOR_URL: http://orchestrator:8000
-   depends_on:
-    - orchestrator
-
-
-volumes:
-  qdrant_storage:
+    build:
+      context: ./services/ui
+      dockerfile: Dockerfile
+    container_name: ledger-ui
+    ports:
+      - "7860:7860"
+    depends_on:
+      - orchestrator
+    restart: unless-stopped
