@@ -1,0 +1,18 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+
+# Deep-learning OCR/Layout/Table
+paddlepaddle==2.6.2
+paddleocr==2.7.0.3
+
+# PDF render + image handling
+PyMuPDF==1.20.2
+pillow==10.4.0
+numpy<2
+
+# Table HTML parsing (preserves commas like 91,905)
+lxml==5.3.0
+
+# PaddleOCR dependency
+opencv-python-headless==4.10.0.84
