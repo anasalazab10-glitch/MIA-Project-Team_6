@@ -29,7 +29,9 @@ services:
     container_name: ledger-reasoning
     ports:
       - "8001:8000"
-
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      RETRIEVAL_API_URL: http://dense-retrieval:8000
   doc-processor:
     build:
       context: ./services/doc-processor-api
@@ -53,6 +55,9 @@ services:
     container_name: ledger-eval-service
     ports:
       - "8005:8000"
+    environment:
+      BENCHMARK_PATH: /app/data/benchmark_100.json
+      ORCHESTRATOR_URL: http://orchestrator:8000
 
   orchestrator:
     build:
@@ -61,12 +66,16 @@ services:
     container_name: ledger-orchestrator
     ports:
       - "8003:8000"
+    environment:
+      DOC_PROCESSOR_URL: http://doc-processor:8000
+      RETRIEVAL_URL: http://dense-retrieval:8000
+      REASONING_URL: http://reasoning:8000
+      VALIDATOR_URL: http://validator:8000
     depends_on:
       - dense-retrieval
       - reasoning
       - doc-processor
       - validator
-
   ui:
     build:
       context: ./services/ui

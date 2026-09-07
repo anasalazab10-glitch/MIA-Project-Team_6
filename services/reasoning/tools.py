@@ -145,8 +145,15 @@ def search_documents(
                 res = client.post(f"{RETRIEVAL_API_URL}/search", json=payload)
                 if res.status_code == 200:
                     data = res.json()
-                    raw_results = data.get("results", data if isinstance(data, list) else [])
-                    chunks = [_adapt_raw_chunk(chunk) for chunk in raw_results]
+
+                    candidates = data.get("candidates", [])
+
+                    chunks = [
+                    _adapt_raw_chunk(candidate["chunk"])
+                    for candidate in candidates
+                    if "chunk" in candidate
+                     ]
+
                     if document_id:
                         chunks = [c for c in chunks if c.document_id == document_id]
                     return chunks

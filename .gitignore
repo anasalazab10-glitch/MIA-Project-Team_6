@@ -22,3 +22,7 @@ ENV/
 # IDE files
 .vscode/
 .idea/
+
+
+TAT-DQA/
+data/tatdqa/

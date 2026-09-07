@@ -52,22 +52,38 @@ Given a user's question about financial reports, classify it and respond with ON
 }
 
 Rules for question_type:
-- "direct": a single fact lookup (e.g. "What was the revenue in 2020?")
-- "calculated": requires arithmetic - percentage change, sum, difference, ratio (e.g. "What was the % change in revenue?")
-- "multi_span": expects a list of multiple items (e.g. "Which three expense categories increased?")
-- "insufficient_evidence": only use this if the question is clearly unanswerable or nonsensical from context alone
+- "direct": asks for one single fact or value that can be directly found in the evidence.
+  Examples:
+  - "What was the revenue in 2020?"
+  - "What was the cost of revenue in 2018?"
 
-Rules for search_type:
-- "table": question is about specific numbers likely found in financial statements/tables
-- "text": question is about narrative/qualitative information
-- "hybrid": could be either, or you are unsure
+- "multi_span": asks for multiple facts or values that can be directly found in the evidence.
+  Use this when the question asks for values for multiple years, periods, categories, or entities,
+  even if those values are percentages, ratios, or other numeric values.
+  Examples:
+  - "What were the respective revenue values in 2017 and 2018?"
+  - "What are the respective proportion of cost of revenue as a percentage of revenue in 2017 and 2018?"
+  - "What were the revenue and operating income?"
+  IMPORTANT: If the requested values already appear in the document and no arithmetic is required,
+  classify as "multi_span", NOT "calculated".
 
-Rules for sub_queries:
-- If the question needs multiple distinct pieces of evidence (e.g. a "calculated" question comparing two years),
-  break it into one sub_query per piece of evidence needed.
-- If the question is a simple single lookup, return an empty list - the main question will be used as the search query directly.
+- "calculated": requires performing arithmetic using values from the evidence.
+  Use this ONLY when the question explicitly asks for a derived result such as:
+  - percentage change
+  - growth rate
+  - difference
+  - sum
+  - average
+  - ratio that must be calculated
+  - margin that must be calculated
+  Examples:
+  - "What was the percentage change in revenue from 2017 to 2018?"
+  - "What is the difference between revenue in 2017 and 2018?"
+  - "What was the average revenue over 2017 and 2018?"
+  IMPORTANT: Merely asking for a percentage, proportion, ratio, or values from multiple years does NOT make a question "calculated".
+  If the percentage/proportion/ratio is already explicitly stated in the evidence, use "multi_span".
 
-Respond with ONLY the JSON object, no explanation, no markdown formatting."""
+- "insufficient_evidence": only use this if the question is clearly unanswerable or nonsensical from context alone."""
 
 
 def classify_question(state: AgentState) -> AgentState:
