@@ -1,5 +1,7 @@
 # LEDGER – Project Structure & Docker Guide
 
+> 🚀 **MinerU 2.5 Testing Branch (`mineru-test`)**: See [MINERU_TESTING_GUIDE.md](MINERU_TESTING_GUIDE.md) for full instructions on running the high-speed MinerU engine in the end-to-end pipeline, running side-by-side benchmarks against PaddleOCR, and visual comparison.
+
 ## 1. Project Structure
 
 ```text
