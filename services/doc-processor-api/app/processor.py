@@ -11,7 +11,14 @@ import fitz  # PyMuPDF
 import numpy as np
 from lxml import html as lxml_html
 from PIL import Image
-from paddleocr import PaddleOCR, PPStructure
+try:
+    from paddleocr import PaddleOCR, PPStructure
+except ImportError:
+    try:
+        from paddleocr import PaddleOCR, PPStructureV3 as PPStructure
+    except ImportError:
+        from paddleocr import PaddleOCR
+        PPStructure = None
 
 from .schemas import ContentType, Element, TableContent
 

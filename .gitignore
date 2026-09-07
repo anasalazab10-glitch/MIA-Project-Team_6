@@ -26,3 +26,6 @@ ENV/
 
 TAT-DQA/
 data/tatdqa/
+visual_output/
+*.db
+services/orchestrator/data/
