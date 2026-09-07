@@ -9,7 +9,7 @@ load_dotenv()
 
 # Per the project README: orchestrator is reachable at localhost:8003 locally,
 # or http://orchestrator:8000 inside the Docker network.
-ORCHESTRATOR_URL = os.environ.get("ORCHESTRATOR_URL", "http://localhost:8003")
+ORCHESTRATOR_URL = os.environ.get("ORCHESTRATOR_URL", "http://orchestrator:8000")
 
 
 def call_backend(question: str) -> Dict[str, Any]:

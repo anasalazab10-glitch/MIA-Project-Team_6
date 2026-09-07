@@ -77,14 +77,17 @@ services:
       - doc-processor
       - validator
   ui:
-    build:
-      context: ./services/ui
-      dockerfile: Dockerfile
-    container_name: ledger-ui
-    ports:
-      - "7860:7860"
-    depends_on:
-      - orchestrator
+   build:
+    context: ./services/ui
+    dockerfile: Dockerfile
+   container_name: ledger-ui
+   ports:
+    - "7860:7860"
+   environment:
+    ORCHESTRATOR_URL: http://orchestrator:8000
+   depends_on:
+    - orchestrator
+
 
 volumes:
   qdrant_storage:
