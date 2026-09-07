@@ -1,7 +1,7 @@
 
 import json
 import os
-from typing import List
+from typing import List, Optional
 
 from groq import Groq
 from pydantic import BaseModel, Field
@@ -40,13 +40,18 @@ Rules:
 Respond with ONLY the JSON object, no explanation outside the JSON, no markdown formatting."""
 
 
-def _run_search(query: str, search_type: str, mock_mode: bool = False) -> List[RetrievedChunk]:
+def _run_search(
+    query: str,
+    search_type: str,
+    document_id: Optional[str] = None,
+    mock_mode: bool = False,
+) -> List[RetrievedChunk]:
     if search_type == "table":
-        return search_tables(query, mock_mode=mock_mode)
+        return search_tables(query, document_id=document_id, mock_mode=mock_mode)
     else:
         # "text" and "hybrid" both go through search_documents,
         # since it already performs hybrid (semantic + keyword) search
-        return search_documents(query, search_type=search_type, mock_mode=mock_mode)
+        return search_documents(query, search_type=search_type, document_id=document_id, mock_mode=mock_mode)
 
 
 def _rule_based_check(chunks: List[RetrievedChunk]) -> bool:
@@ -94,6 +99,7 @@ def retrieve_evidence(state: AgentState, mock_mode: bool = False) -> AgentState:
     question = state["question"]
     search_type = state.get("search_type", "hybrid")
     sub_queries = state.get("sub_queries", [])
+    document_id = state.get("document_id")
 
     # If the classifier broke the question into sub-queries, search each one.
     # Otherwise, just search the main question directly.
@@ -101,7 +107,7 @@ def retrieve_evidence(state: AgentState, mock_mode: bool = False) -> AgentState:
 
     all_chunks: List[RetrievedChunk] = []
     for query in queries:
-        chunks = _run_search(query, search_type, mock_mode=mock_mode)
+        chunks = _run_search(query, search_type, document_id=document_id, mock_mode=mock_mode)
         all_chunks.extend(chunks)
 
     if not _rule_based_check(all_chunks):

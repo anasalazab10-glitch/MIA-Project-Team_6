@@ -27,6 +27,20 @@ class EvidenceCitation(BaseModel):
     section: Optional[str] = None
 
 
+class RetrievedCandidate(BaseModel):
+    document_id: str
+    page: Union[int, List[int], str]
+    section: Optional[str] = "General"
+    content_type: Optional[str] = "text"
+    text: Optional[str] = None
+    score: Optional[float] = None
+    rank: Optional[int] = None
+    retrieval_method: Optional[str] = None
+    scores: Optional[Dict[str, float]] = None
+    metadata: Optional[Dict[str, Any]] = None
+    chunk: Optional[Dict[str, Any]] = None
+
+
 class StrictAnswer(BaseModel):
     answer_type: Literal["direct", "calculated", "multi_span", "insufficient_evidence"]
     evidence: List[Dict[str, Any]] = Field(default_factory=list)
@@ -37,6 +51,10 @@ class RunResponse(BaseModel):
     answer_type: str
     evidence: List[Dict[str, Any]]
     params: Dict[str, Any]
+    retrieved_candidates: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Retrieved chunk candidates reflecting exactly what the reasoning agent used, for failure analysis and evaluation.",
+    )
     validation_status: str = "valid"
     validation_reason: Optional[str] = None
     latency_ms: float = 0.0
@@ -91,6 +109,7 @@ class QueryAuditItem(BaseModel):
     latency_ms: float
     timestamp: str
     evidence_count: int = 0
+    candidates_count: int = 0
 
 
 class DashboardStats(BaseModel):

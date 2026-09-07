@@ -143,6 +143,8 @@ class ServiceClients:
         payload: Dict[str, Any] = {"question": question}
         if session_id:
             payload["session_id"] = session_id
+        if document_id:
+            payload["document_id"] = document_id
 
         try:
             res = await self.client.post(

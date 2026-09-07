@@ -157,6 +157,7 @@ class MetadataStore:
         validation_passed: bool,
         latency_ms: float,
         evidence_count: int = 0,
+        candidates_count: int = 0,
     ) -> QueryAuditItem:
         item = QueryAuditItem(
             query_id=str(uuid.uuid4())[:8],
@@ -166,6 +167,7 @@ class MetadataStore:
             latency_ms=round(latency_ms, 2),
             timestamp=datetime.now(timezone.utc).isoformat(),
             evidence_count=evidence_count,
+            candidates_count=candidates_count,
         )
         self.queries.append(item)
         # Keep last 100 queries

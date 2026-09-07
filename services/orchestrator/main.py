@@ -126,6 +126,7 @@ async def run_query(request: RunRequest):
     answer_type = raw_answer.get("answer_type", "insufficient_evidence")
     evidence = raw_answer.get("evidence", [])
     params = raw_answer.get("params", {})
+    retrieved_candidates = raw_answer.get("retrieved_candidates", [])
 
     validation_payload = {
         "answer_type": answer_type,
@@ -141,7 +142,7 @@ async def run_query(request: RunRequest):
     if is_valid:
         logger.info(
             f"[ANSWER-VALIDATOR-SUCCESS] Validated answer of type '{answer_type}' "
-            f"with {len(evidence)} evidence citations."
+            f"with {len(evidence)} evidence citations and {len(retrieved_candidates)} retrieved candidates."
         )
         final_answer = validation_payload
         validation_status = "valid"
@@ -169,12 +170,14 @@ async def run_query(request: RunRequest):
         validation_passed=is_valid,
         latency_ms=elapsed_ms,
         evidence_count=len(final_answer.get("evidence", [])),
+        candidates_count=len(retrieved_candidates),
     )
 
     return RunResponse(
         answer_type=final_answer["answer_type"],
         evidence=final_answer.get("evidence", []),
         params=final_answer.get("params", {}),
+        retrieved_candidates=retrieved_candidates,
         validation_status=validation_status,
         validation_reason=val_reason if not is_valid else None,
         latency_ms=round(elapsed_ms, 2),

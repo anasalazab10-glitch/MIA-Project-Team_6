@@ -77,10 +77,10 @@ import os
 RETRIEVAL_API_URL = os.environ.get("RETRIEVAL_API_URL", "http://localhost:8000")
 
 
-def _adapt_raw_chunk(raw: Dict[str, Any]) -> RetrievedChunk:
+def _adapt_raw_chunk(raw: Dict[str, Any], candidate_meta: Optional[Dict[str, Any]] = None) -> RetrievedChunk:
     """
-    Converts retrieval-api's raw chunk format into our RetrievedChunk schema.
-
+    Converts retrieval-api's raw chunk format into our RetrievedChunk schema,
+    preserving rank, score, and retrieval method metadata for failure analysis.
     """
     page_raw = raw.get("page", [0])
     page = page_raw if isinstance(page_raw, list) else [page_raw]
@@ -97,12 +97,18 @@ def _adapt_raw_chunk(raw: Dict[str, Any]) -> RetrievedChunk:
     else:
         text = str(content)
 
+    meta = candidate_meta or {}
     return RetrievedChunk(
+        chunk_id=raw.get("chunk_id"),
         document_id=raw.get("document_id", "unknown"),
         page=page,
         section=raw.get("section", "General"),
         content_type=raw.get("content_type", "text"),
         text=text,
+        score=meta.get("score"),
+        rank=meta.get("rank"),
+        retrieval_method=meta.get("retrieval_method"),
+        scores=meta.get("scores"),
     )
 
 
@@ -110,18 +116,26 @@ def _mock_chunks() -> List[RetrievedChunk]:
     """Shared mock fallback data used across tools during standalone dev."""
     return [
         RetrievedChunk(
+            chunk_id="mock_chunk_1",
             document_id="cts-corporation_2019.pdf",
             page=[1],
             section="Financial Statements",
             content_type="table",
             text="Net sales: 469850. Operating earnings: 38750.",
+            score=0.95,
+            rank=1,
+            retrieval_method="hybrid",
         ),
         RetrievedChunk(
+            chunk_id="mock_chunk_2",
             document_id="jabil-circuit-inc_2019.pdf",
             page=[1],
             section="Financial Statements",
             content_type="table",
             text="Net revenue: 25296000. Operating income: 714200.",
+            score=0.91,
+            rank=2,
+            retrieval_method="hybrid",
         ),
     ]
 
@@ -135,11 +149,13 @@ def search_documents(
 ) -> List[RetrievedChunk]:
     """
     General-purpose corpus search. Calls retrieval-api's /search endpoint,
-    which handles embedding + reranking internally and always returns the
-    top 5 reranked candidates.
+    which handles embedding + reranking internally and returns candidate chunks.
     """
     if not mock_mode:
-        payload = {"query": query}  # confirmed: API only expects {"query": "..."}
+        payload: Dict[str, Any] = {"query": query}
+        if document_id:
+            payload["metadata_filter"] = {"document_id": document_id}
+
         try:
             with httpx.Client(timeout=10.0) as client:
                 res = client.post(f"{RETRIEVAL_API_URL}/search", json=payload)
@@ -149,10 +165,12 @@ def search_documents(
                     candidates = data.get("candidates", [])
 
                     chunks = [
-                    _adapt_raw_chunk(candidate["chunk"])
-                    for candidate in candidates
-                    if "chunk" in candidate
-                     ]
+                        _adapt_raw_chunk(
+                            candidate.get("chunk", candidate),
+                            candidate_meta=candidate,
+                        )
+                        for candidate in candidates
+                    ]
 
                     if document_id:
                         chunks = [c for c in chunks if c.document_id == document_id]

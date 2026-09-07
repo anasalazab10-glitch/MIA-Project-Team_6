@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -14,6 +14,11 @@ class RetrievedChunk(BaseModel):
     section: Optional[str] = "General"
     content_type: str
     text: str
+    chunk_id: Optional[str] = None
+    score: Optional[float] = None
+    rank: Optional[int] = None
+    retrieval_method: Optional[str] = None
+    scores: Optional[Dict[str, float]] = None
 
 
 # 1. Direct Schema

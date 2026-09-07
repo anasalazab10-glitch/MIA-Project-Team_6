@@ -47,6 +47,17 @@ def test_run_valid_direct_answer(client):
         "answer_type": "direct",
         "evidence": [{"document_id": "doc_017", "page": 1, "section": "Income Statement"}],
         "params": {"value": "$142.5M"},
+        "retrieved_candidates": [
+            {
+                "document_id": "doc_017",
+                "page": [1],
+                "section": "Income Statement",
+                "content_type": "table",
+                "text": "Operating income was $142.5M in 2020.",
+                "score": 0.92,
+                "rank": 1,
+            }
+        ],
     }
     mock_validator_response = {"valid": True, "reason": "Passed strict validation"}
 
@@ -63,6 +74,9 @@ def test_run_valid_direct_answer(client):
         assert len(data["evidence"]) == 1
         assert data["evidence"][0]["document_id"] == "doc_017"
         assert "latency_ms" in data
+        assert len(data["retrieved_candidates"]) == 1
+        assert data["retrieved_candidates"][0]["document_id"] == "doc_017"
+        assert data["retrieved_candidates"][0]["score"] == 0.92
 
 
 def test_run_valid_calculated_answer(client):
@@ -74,6 +88,17 @@ def test_run_valid_calculated_answer(client):
             {"document_id": "doc_041", "page": 2, "section": "Operating Expenses"},
         ],
         "params": {"value": 13.4, "formula": "(3875-3410)/3410*100"},
+        "retrieved_candidates": [
+            {
+                "document_id": "doc_041",
+                "page": [2],
+                "section": "Operating Expenses",
+                "content_type": "table",
+                "text": "Expenses 2019: 3410, 2020: 3875",
+                "score": 0.88,
+                "rank": 1,
+            }
+        ],
     }
     mock_validator_response = {"valid": True, "reason": "Formula and citations valid"}
 
@@ -88,17 +113,31 @@ def test_run_valid_calculated_answer(client):
         assert data["params"]["value"] == 13.4
         assert data["params"]["formula"] == "(3875-3410)/3410*100"
         assert data["validation_status"] == "valid"
+        assert len(data["retrieved_candidates"]) == 1
 
 
 def test_run_validator_rejection_safety(client):
     """
     CRITICAL TEST: When validator rejects an answer (e.g. missing citations or hallucinated math),
-    orchestrator MUST convert to schema-compliant insufficient_evidence and never leak unverified data.
+    orchestrator MUST convert to schema-compliant insufficient_evidence and never leak unverified data,
+    WHILE preserving retrieved_candidates for failure analysis.
     """
+    candidate_data = [
+        {
+            "document_id": "doc_099",
+            "page": [5],
+            "section": "Outlook",
+            "content_type": "text",
+            "text": "Future revenue projections are unavailable.",
+            "score": 0.65,
+            "rank": 1,
+        }
+    ]
     hallucinated_answer = {
         "answer_type": "calculated",
         "evidence": [],  # Missing required citations!
         "params": {"value": 999.9, "formula": "100+899.9"},
+        "retrieved_candidates": candidate_data,
     }
     mock_validator_response = {
         "valid": False,
@@ -116,6 +155,9 @@ def test_run_validator_rejection_safety(client):
         assert data["validation_status"] == "rejected"
         assert "rejected by validator" in data["params"]["reason"]
         assert data["evidence"] == []
+        # CRITICAL: retrieved_candidates must be preserved for failure analysis!
+        assert len(data["retrieved_candidates"]) == 1
+        assert data["retrieved_candidates"][0]["document_id"] == "doc_099"
 
 
 def test_run_reasoning_service_failure(client):
@@ -129,6 +171,7 @@ def test_run_reasoning_service_failure(client):
 
         assert data["answer_type"] == "insufficient_evidence"
         assert "unable to answer" in data["params"]["reason"]
+        assert data["retrieved_candidates"] == []
 
 
 def test_ingest_document(client):
