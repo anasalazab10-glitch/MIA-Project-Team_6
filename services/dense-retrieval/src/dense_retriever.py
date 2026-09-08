@@ -15,7 +15,7 @@ class DenseRetriever:
         self.embedding_model = embedding_model
         self.vector_store = vector_store
 
-    def retrieve(self,query: str,top_k: int = DEFAULT_TOP_K,) -> RetrievalResponse:
+    def retrieve(self,query: str,top_k: int = DEFAULT_TOP_K,document_id: str | None = None,) -> RetrievalResponse:
         """
         Perform dense retrieval for a user query.
 
@@ -32,6 +32,7 @@ class DenseRetriever:
         results = self.vector_store.search(
             query_embedding,
             top_k=top_k,
+            document_id=document_id,
         )
 
         # 3. Convert Qdrant results into Candidate objects
