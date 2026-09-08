@@ -21,7 +21,7 @@ def call_backend(question: str) -> Dict[str, Any]:
         res = requests.post(
             f"{ORCHESTRATOR_URL}/run",
             json={"question": question},
-            timeout=15,
+            timeout=60,
         )
         if res.status_code == 200:
             return res.json()
@@ -96,7 +96,7 @@ def chat_respond(message: str, history: List[Dict[str, str]]) -> Tuple[str, List
 
 def fetch_documents() -> List[List[Any]]:
     try:
-        res = requests.get(f"{ORCHESTRATOR_URL}/documents", timeout=10)
+        res = requests.get(f"{ORCHESTRATOR_URL}/documents", timeout=60)
         if res.status_code == 200:
             docs = res.json()
             if not docs:
@@ -121,7 +121,7 @@ def fetch_documents() -> List[List[Any]]:
 
 def fetch_dashboard() -> Tuple[str, List[List[Any]]]:
     try:
-        res = requests.get(f"{ORCHESTRATOR_URL}/dashboard/stats", timeout=10)
+        res = requests.get(f"{ORCHESTRATOR_URL}/dashboard/stats", timeout=60)
         if res.status_code == 200:
             stats = res.json()
             summary = (
