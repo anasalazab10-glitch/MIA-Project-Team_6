@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -7,8 +5,11 @@ from fastapi.responses import JSONResponse
 
 from .processor import DocProcessor, sha1_id
 from .schemas import ProcessResponse
+from langfuse import get_client, observe
 
 app = FastAPI(title="doc-processor-api", version="0.1.0")
+
+langfuse = get_client()
 
 processor: DocProcessor | None = None
 
@@ -17,6 +18,11 @@ processor: DocProcessor | None = None
 def _startup() -> None:
     global processor
     processor = DocProcessor(lang="en")
+
+
+@app.on_event("shutdown")
+def _shutdown() -> None:
+    langfuse.flush()
 
 
 def _default_document_id(filename: str | None, pdf_bytes: bytes) -> str:
@@ -33,6 +39,7 @@ def health():
 
 
 @app.post("/process", response_model=ProcessResponse)
+@observe(name="doc-processor-process")
 async def process_pdf(
     file: UploadFile = File(...),
     document_id: str | None = Form(default=None),

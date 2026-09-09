@@ -10,6 +10,10 @@ services:
     environment:
       QDRANT_URL: ${QDRANT_URL}
       QDRANT_API_KEY: ${QDRANT_API_KEY}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL}
+      LANGFUSE_TIMEOUT: ${LANGFUSE_TIMEOUT}
     restart: unless-stopped
 
   reasoning:
@@ -22,6 +26,10 @@ services:
     environment:
       GROQ_API_KEY: ${GROQ_API_KEY}
       RETRIEVAL_API_URL: http://dense-retrieval:8000
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL}
+      LANGFUSE_TIMEOUT: ${LANGFUSE_TIMEOUT}
     depends_on:
       - dense-retrieval
     restart: unless-stopped
@@ -31,8 +39,15 @@ services:
       context: ./services/doc-processor-api
       dockerfile: Dockerfile
     container_name: ledger-doc-processor
+    volumes:
+      - paddleocr_models:/root/.paddleocr
     ports:
       - "8002:8000"
+    environment:
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL}
+      LANGFUSE_TIMEOUT: ${LANGFUSE_TIMEOUT}
     restart: unless-stopped
 
   validator:
@@ -42,6 +57,11 @@ services:
     container_name: ledger-validator
     ports:
       - "8004:8000"
+    environment:
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL}
+      LANGFUSE_TIMEOUT: ${LANGFUSE_TIMEOUT}
     restart: unless-stopped
 
   eval-service:
@@ -54,6 +74,9 @@ services:
     environment:
       BENCHMARK_PATH: /app/data/benchmark_100.json
       ORCHESTRATOR_URL: http://orchestrator:8000
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_HOST: ${LANGFUSE_BASE_URL}
     depends_on:
       - orchestrator
     restart: unless-stopped
@@ -70,6 +93,10 @@ services:
       RETRIEVAL_URL: http://dense-retrieval:8000
       REASONING_URL: http://reasoning:8000
       VALIDATOR_URL: http://validator:8000
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL}
+      LANGFUSE_TIMEOUT: ${LANGFUSE_TIMEOUT}
     depends_on:
       - dense-retrieval
       - reasoning
@@ -87,3 +114,6 @@ services:
     depends_on:
       - orchestrator
     restart: unless-stopped
+
+volumes:
+  paddleocr_models:

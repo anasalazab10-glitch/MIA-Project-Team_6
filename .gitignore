@@ -25,4 +25,5 @@ ENV/
 
 
 TAT-DQA/
-data/tatdqa/
+data/tatdqa/*.zip
+batches/*/batch_*_done.txt
