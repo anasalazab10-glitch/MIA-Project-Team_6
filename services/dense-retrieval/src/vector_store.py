@@ -2,7 +2,14 @@ import os
 import uuid
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointStruct,
+    VectorParams,
+)
 
 from src.schemas import Chunk
 
@@ -80,21 +87,29 @@ class VectorStore:
             points=points,
         )
 
-    def search(
-        self,
-        query_embedding,
-        top_k: int = 30,
-    ):
+    def search(self,query_embedding,top_k: int = 30,document_id: str | None = None,):
         """Search Qdrant for the most similar chunks."""
 
+        query_filter = None
+     
+        if document_id is not None:
+             query_filter = Filter(
+                 must=[
+                     FieldCondition(
+                         key="document_id",
+                         match=MatchValue(value=document_id),
+                     )
+                 ]
+             )
+     
         results = self.client.query_points(
-            collection_name=self.collection_name,
-            query=query_embedding.tolist(),
-            limit=top_k,
-        )
-
+             collection_name=self.collection_name,
+             query=query_embedding.tolist(),
+             limit=top_k,
+             query_filter=query_filter,
+         )
+     
         return results.points
-
     def get_all_chunks(self) -> list[Chunk]:
         """Load all indexed chunks from Qdrant."""
 
