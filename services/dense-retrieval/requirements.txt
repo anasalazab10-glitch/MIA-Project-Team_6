@@ -16,3 +16,4 @@ pydantic
 # Testing
 pytest
 
+langfuse==2.59.2

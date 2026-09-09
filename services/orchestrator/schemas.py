@@ -17,8 +17,9 @@ class RunRequest(BaseModel):
     question: str = Field(..., description="Natural language question to ask the system")
     session_id: Optional[str] = Field(None, description="Optional session or conversation ID")
     document_id: Optional[str] = Field(
-        None, description="Optional document ID for document/company scoping"
-    )
+        None, description="Optional document ID for document/company scoping")
+    trace_id: str | None = None
+    
 
 
 class EvidenceCitation(BaseModel):

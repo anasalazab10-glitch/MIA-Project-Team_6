@@ -162,6 +162,7 @@ class RetrievalRequest(BaseModel):
             "(e.g., {'document_id': 'doc1', 'year': 2024})"
         ),
     )
+    trace_id: str | None = None
 
 
 class RerankRequest(BaseModel):

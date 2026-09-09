@@ -48,7 +48,7 @@ def load_benchmark() -> list[BenchmarkItem]:
     return [BenchmarkItem.model_validate(x) for x in raw]
 
 
-def call_orchestrator(orchestrator_url: str, question_text: str, question_id: str, document_id: str | None = None, debug: bool = False) -> dict[str, Any]:
+def call_orchestrator(orchestrator_url: str, question_text: str, question_id: str, document_id: str | None = None, debug: bool = False , trace_id: str | None = None,) -> dict[str, Any]:
     """
     Calls Orchestrator POST /run.
 
@@ -64,6 +64,8 @@ def call_orchestrator(orchestrator_url: str, question_text: str, question_id: st
         payload["document_id"] = document_id
     if debug:
         payload["debug"] = True
+    if trace_id:
+        payload["trace_id"] = trace_id
 
     r = requests.post(url, json=payload, timeout=120)
     r.raise_for_status()
@@ -214,6 +216,7 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
             question_text=item.question_text,
             is_answerable=item.is_answerable,
             ground_truth_answer=item.ground_truth_answer,
+            
         )
 
         # Gold evidence pages (doc_uid + page)
@@ -240,6 +243,8 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
                 question_text=item.question_text,
                 question_id=item.question_id,
                 debug=req.debug,
+                trace_id=trace.id if trace else None,
+                
             )
 
             per.predicted_answer = pred

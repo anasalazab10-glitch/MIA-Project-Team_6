@@ -146,6 +146,7 @@ def search_documents(
     top_k: int = 5,               # kept for interface compatibility; API always returns top 5
     document_id: Optional[str] = None,
     mock_mode: bool = False,
+    trace_id: Optional[str] = None,
 ) -> List[RetrievedChunk]:
     """
     General-purpose corpus search. Calls retrieval-api's /search endpoint,
@@ -155,7 +156,8 @@ def search_documents(
         payload: Dict[str, Any] = {"query": query}
         if document_id:
             payload["metadata_filter"] = {"document_id": document_id}
-
+        if trace_id:
+            payload["trace_id"] = trace_id
         try:
             with httpx.Client(timeout=10.0) as client:
                 res = client.post(f"{RETRIEVAL_API_URL}/search", json=payload)

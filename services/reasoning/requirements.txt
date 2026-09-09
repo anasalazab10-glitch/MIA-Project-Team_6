@@ -7,3 +7,4 @@ uvicorn
 fastapi
 dotenv
 httpx
+langfuse==2.59.2

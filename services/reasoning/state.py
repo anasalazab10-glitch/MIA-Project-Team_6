@@ -10,6 +10,7 @@ class AgentState(TypedDict):
     question: str
     session_id: Optional[str]
     document_id: Optional[str]
+    trace_id: Optional[str]
 
     # Classification & Routing
     question_type: Optional[Literal["direct", "calculated", "multi_span", "insufficient_evidence"]]

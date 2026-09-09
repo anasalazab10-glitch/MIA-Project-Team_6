@@ -26,13 +26,13 @@ Run with:
 """
 
 from typing import Any, Dict
-
+from langfuse import Langfuse
 from fastapi import FastAPI
 from pydantic import BaseModel
 
 from validator import validate_answer
 
-
+langfuse = Langfuse()
 app = FastAPI(
     title="Answer Validator Service",
     version="0.1.0",
@@ -43,6 +43,7 @@ class ValidationRequest(BaseModel):
     answer_type: str
     evidence: list
     params: Dict[str, Any]
+    trace_id: str | None = None
 
 
 class ValidationResponse(BaseModel):
@@ -59,35 +60,62 @@ def health():
 def validate(request: ValidationRequest):
     payload = request.model_dump()
 
-    valid, reason = validate_answer(payload)
+    trace = langfuse.trace(
+        id=request.trace_id,
+        name="validator-validate",
+        input={
+            "answer_type": request.answer_type,
+            "evidence": request.evidence,
+            "params": request.params,
+        },
+    )
 
-    if valid:
-        evidence = payload["evidence"]
+    try:
+        valid, reason = validate_answer(payload)
 
-        if evidence:
-            citation = evidence[0]
-            print(
-                f"[ANSWER-VALIDATOR-SUCCESS] "
-                f"Received and validated answer of type "
-                f"'{payload['answer_type']}' with evidence "
-                f"{{ document_id: {citation.get('document_id')}, "
-                f"page: {citation.get('page')} }}"
-            )
-        else:
-            print(
-                f"[ANSWER-VALIDATOR-SUCCESS] "
-                f"Received and validated answer of type "
-                f"'{payload['answer_type']}' with no evidence required"
-            )
-
-    else:
-        print(
-            f"[ANSWER-VALIDATOR-ERROR] "
-            f"Invalid answer. Reason: {reason}"
+        trace.update(
+            output={
+                "valid": valid,
+                "reason": reason,
+            }
         )
 
-    return {
-        "valid": valid,
-        "reason": reason,
-    }
+        if valid:
+            evidence = payload["evidence"]
+
+            if evidence:
+                citation = evidence[0]
+                print(
+                    f"[ANSWER-VALIDATOR-SUCCESS] "
+                    f"Received and validated answer of type "
+                    f"'{payload['answer_type']}' with evidence "
+                    f"{{ document_id: {citation.get('document_id')}, "
+                    f"page: {citation.get('page')} }}"
+                )
+            else:
+                print(
+                    f"[ANSWER-VALIDATOR-SUCCESS] "
+                    f"Received and validated answer of type "
+                    f"'{payload['answer_type']}' with no evidence required"
+                )
+
+        else:
+            print(
+                f"[ANSWER-VALIDATOR-ERROR] "
+                f"Invalid answer. Reason: {reason}"
+            )
+
+        return {
+            "valid": valid,
+            "reason": reason,
+        }
+
+    except Exception as exc:
+        trace.update(
+            output={
+                "valid": False,
+                "reason": str(exc),
+            }
+        )
+        raise
 

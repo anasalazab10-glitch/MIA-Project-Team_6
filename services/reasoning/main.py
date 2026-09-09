@@ -12,7 +12,7 @@ Then in another terminal:
     curl -X POST http://localhost:8000/run -H "Content-Type: application/json" -d '{"question": "What was Jabil Circuit'\''s operating income in 2019?"}'
 """
 from typing import Any, Dict, List, Optional
-
+from langfuse import  Langfuse
 from dotenv import load_dotenv
 load_dotenv()  # must run BEFORE importing graph, since classifier.py creates
                 # its Groq client at import time using GROQ_API_KEY
@@ -22,6 +22,7 @@ from pydantic import BaseModel
 
 from graph import agent_graph
 
+langfuse = Langfuse()
 app = FastAPI(title="Reasoner Service")
 
 
@@ -29,6 +30,7 @@ class RunRequest(BaseModel):
     question: str
     session_id: Optional[str] = None
     document_id: Optional[str] = None
+    trace_id: Optional[str] = None
 
 
 class RunResponse(BaseModel):
@@ -42,6 +44,7 @@ def run_agent_graph(
     question: str,
     session_id: Optional[str] = None,
     document_id: Optional[str] = None,
+    trace_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Runs the real compiled LangGraph pipeline end to end:
@@ -51,9 +54,38 @@ def run_agent_graph(
         "question": question,
         "session_id": session_id,
         "document_id": document_id,
+        "trace_id": trace_id,
         "retrieved_chunks": [],
     }
-    result_state = agent_graph.invoke(initial_state)
+    trace = langfuse.trace(
+            id=trace_id,
+            name="reasoning-run",
+            input={
+                "question": question,
+                "session_id": session_id,
+                "document_id": document_id,
+            },
+        )
+        
+    span = trace.span(
+            name="reasoning-agent-graph",
+            input=initial_state,
+        )
+        
+    try:
+            result_state = agent_graph.invoke(initial_state)
+        
+            span.end(
+                output={
+                    "status": "completed",
+                }
+            )
+    except Exception as exc:
+            span.end(
+                level="ERROR",
+                status_message=str(exc),
+            )
+            raise
     final_answer = result_state.get("final_answer", {})
     if not isinstance(final_answer, dict):
         final_answer = final_answer.model_dump() if hasattr(final_answer, "model_dump") else {}
@@ -93,6 +125,7 @@ def health_check():
 
 
 @app.post("/run", response_model=RunResponse)
+
 def run(request: RunRequest):
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
@@ -102,6 +135,7 @@ def run(request: RunRequest):
             question=request.question,
             session_id=request.session_id,
             document_id=request.document_id,
+            trace_id=request.trace_id,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Agent failed: {exc}")

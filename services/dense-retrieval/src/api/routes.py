@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from src.indexing import index_elements
-
+from langfuse import Langfuse
 from src.schemas import (
     IndexRequest,
     IndexResponse,
@@ -8,7 +8,7 @@ from src.schemas import (
     RetrievalResponse,
 )
 
-
+langfuse = Langfuse()
 router = APIRouter()
 
 pipeline = None
@@ -37,24 +37,52 @@ def health():
     }
 
 
-@router.post(
-    "/search",
-    response_model=RetrievalResponse,
-)
+@router.post("/search", response_model=RetrievalResponse)
 def search(request: RetrievalRequest):
-
     if pipeline is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Retrieval pipeline is not initialized.",
-        )
+        raise HTTPException(...)
 
-    return pipeline.retrieve(
-        query=request.query,
-        final_top_k=5,
-        metadata_filter=request.metadata_filter,
+    trace = langfuse.trace(
+        id=request.trace_id,
+        name="retrieval-search",
+        input={
+            "query": request.query,
+            "top_k": request.top_k,
+            "retrieval_method": request.retrieval_method.value,
+            "metadata_filter": request.metadata_filter,
+        },
     )
 
+    span = trace.span(
+        name="retrieval-pipeline",
+        input={
+            "query": request.query,
+            "final_top_k": 5,
+            "metadata_filter": request.metadata_filter,
+        },
+    )
+
+    try:
+        result = pipeline.retrieve(
+            query=request.query,
+            final_top_k=5,
+            metadata_filter=request.metadata_filter,
+        )
+
+        span.end(
+            output={
+                "num_candidates": len(result.candidates),
+            }
+        )
+
+        return result
+
+    except Exception as exc:
+        span.end(
+            level="ERROR",
+            status_message=str(exc),
+        )
+        raise
 
 @router.post(
     "/index",

@@ -45,13 +45,14 @@ def _run_search(
     search_type: str,
     document_id: Optional[str] = None,
     mock_mode: bool = False,
+    trace_id: Optional[str] = None,
 ) -> List[RetrievedChunk]:
     if search_type == "table":
-        return search_tables(query, document_id=document_id, mock_mode=mock_mode)
+        return search_tables(query, document_id=document_id, mock_mode=mock_mode ,trace_id=trace_id,)
     else:
         # "text" and "hybrid" both go through search_documents,
         # since it already performs hybrid (semantic + keyword) search
-        return search_documents(query, search_type=search_type, document_id=document_id, mock_mode=mock_mode)
+        return search_documents(query, search_type=search_type, document_id=document_id, mock_mode=mock_mode , trace_id=trace_id,)
 
 
 def _rule_based_check(chunks: List[RetrievedChunk]) -> bool:
@@ -100,14 +101,14 @@ def retrieve_evidence(state: AgentState, mock_mode: bool = False) -> AgentState:
     search_type = state.get("search_type", "hybrid")
     sub_queries = state.get("sub_queries", [])
     document_id = state.get("document_id")
-
+    trace_id = state.get("trace_id")
     # If the classifier broke the question into sub-queries, search each one.
     # Otherwise, just search the main question directly.
     queries = [sq["query"] for sq in sub_queries] if sub_queries else [question]
 
     all_chunks: List[RetrievedChunk] = []
     for query in queries:
-        chunks = _run_search(query, search_type, document_id=document_id, mock_mode=mock_mode)
+        chunks = _run_search(query, search_type, document_id=document_id, mock_mode=mock_mode , trace_id=trace_id,)
         all_chunks.extend(chunks)
 
     if not _rule_based_check(all_chunks):

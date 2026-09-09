@@ -134,6 +134,7 @@ class ServiceClients:
         question: str,
         session_id: Optional[str] = None,
         document_id: Optional[str] = None,
+        trace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Sends the question to reasoning agent-service (/run).
@@ -145,6 +146,8 @@ class ServiceClients:
             payload["session_id"] = session_id
         if document_id:
             payload["document_id"] = document_id
+        if trace_id:
+            payload["trace_id"] = trace_id
 
         try:
             res = await self.client.post(
@@ -164,34 +167,52 @@ class ServiceClients:
     # ------------------------------------------------------------------
     # 4. Answer Validator Client
     # ------------------------------------------------------------------
+    
     async def validate_answer(
         self,
         answer_payload: Dict[str, Any],
+        trace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Sends the candidate answer to validator-service (/validate_answer).
         Returns { valid: bool, reason: str }
         """
         url = f"{settings.validator_url}/validate_answer"
-
+    
+        payload = dict(answer_payload)
+    
+        if trace_id:
+            payload["trace_id"] = trace_id
+    
         try:
             res = await self.client.post(
                 url,
-                json=answer_payload,
+                json=payload,
                 timeout=settings.validator_timeout,
             )
+    
             if res.status_code == 200:
                 return res.json()
             else:
-                logger.error(f"[Validator] Unexpected status {res.status_code}: {res.text}")
-                return {"valid": False, "reason": f"Validator HTTP {res.status_code}: {res.text}"}
+                logger.error(
+                    f"[Validator] Unexpected status "
+                    f"{res.status_code}: {res.text}"
+                )
+                return {
+                    "valid": False,
+                    "reason": f"Validator HTTP {res.status_code}: {res.text}",
+                }
+    
         except Exception as exc:
             logger.error(f"[Validator] Call failed at {url}: {exc}")
+    
             # If validator is unreachable, we must not let unvalidated answer pass!
             return {
                 "valid": False,
                 "reason": f"Validator service unreachable at {url}: {exc}",
             }
+
+
 
     # ------------------------------------------------------------------
     # Health checks

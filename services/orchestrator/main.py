@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
+from langfuse import Langfuse
 from clients import ServiceClients
 from config import settings
 from metadata_store import MetadataStore
@@ -34,6 +34,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("orchestrator")
+
+langfuse = Langfuse()
 
 clients = ServiceClients()
 metadata_store = MetadataStore(data_dir=settings.data_dir)
@@ -103,6 +105,22 @@ async def run_query(request: RunRequest):
 
     t0 = time.time()
     logger.info(f"[Query Received] Question: '{question}' (session_id={request.session_id})")
+    trace = langfuse.trace(
+    id=request.trace_id,
+    name="orchestrator-run",
+    input={
+        "question": question,
+        "session_id": request.session_id,
+        "document_id": request.document_id,
+    },
+    )
+
+    span = trace.span(
+    name="orchestrator-pipeline",
+    input={
+        "question": question,
+    },
+     )
 
     # Step 1: Execute reasoning agent
     try:
@@ -110,6 +128,7 @@ async def run_query(request: RunRequest):
             question=question,
             session_id=request.session_id,
             document_id=request.document_id,
+            trace_id=request.trace_id,
         )
     except Exception as exc:
         logger.error(f"[Reasoning Error] {exc}")
@@ -135,7 +154,18 @@ async def run_query(request: RunRequest):
     }
 
     # Step 2: Validate against Strict Answer Schema via Answer-Validator-API
-    val_result = await clients.validate_answer(validation_payload)
+    try:
+        val_result = await clients.validate_answer(
+            validation_payload,
+            trace_id=request.trace_id,
+        )
+    except Exception as exc:
+        logger.error(f"[Validator Error] {exc}")
+    
+        val_result = {
+            "valid": False,
+            "reason": f"Validator service was unable to validate the answer: {str(exc)}",
+        }
     is_valid = val_result.get("valid", False)
     val_reason = val_result.get("reason", "")
 
@@ -171,6 +201,22 @@ async def run_query(request: RunRequest):
         latency_ms=elapsed_ms,
         evidence_count=len(final_answer.get("evidence", [])),
         candidates_count=len(retrieved_candidates),
+    )
+    span.end(
+    output={
+        "validation_status": validation_status,
+        "answer_type": final_answer["answer_type"],
+        "num_evidence": len(final_answer.get("evidence", [])),
+        "num_candidates": len(retrieved_candidates),
+    }
+    )
+
+    trace.update(
+    output={
+        "answer_type": final_answer["answer_type"],
+        "validation_status": validation_status,
+        "validation_reason": val_reason if not is_valid else None,
+     }
     )
 
     return RunResponse(
