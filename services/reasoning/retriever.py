@@ -1,4 +1,3 @@
-
 import json
 import os
 from typing import List, Optional
@@ -10,34 +9,36 @@ from state import AgentState
 from schemas import DocumentCitation, RetrievedChunk
 from tools import search_documents, search_tables
 
+
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 MODEL_NAME = "openai/gpt-oss-20b"
 
 MAX_RETRIES = 2
 
+
 class SufficiencyResult(BaseModel):
-    status: str = Field(description="One of: sufficient, weak, insufficient")
-    reason: str = Field(description="Brief explanation of the judgment")
+    status: str = Field(
+        description="One of: sufficient, weak, insufficient"
+    )
+    reason: str = Field(
+        description="Brief explanation of the judgment"
+    )
 
 
-SUFFICIENCY_SYSTEM_PROMPT = """You are checking whether retrieved evidence is enough to answer a question.
+SUFFICIENCY_SYSTEM_PROMPT = """
+You are an evidence sufficiency checker.
 
-You will be given a QUESTION and a list of EVIDENCE chunks pulled from financial documents.
+Given a question and retrieved document chunks, determine whether
+the retrieved evidence is sufficient to answer the question accurately.
 
-Judge the evidence and respond with ONLY valid JSON matching this schema:
+Return:
+- sufficient: evidence directly supports the answer
+- weak: evidence is partially relevant but may require another search
+- insufficient: evidence does not contain enough information
 
-{
-  "status": "sufficient" | "weak" | "insufficient",
-  "reason": "..."
-}
-
-Rules:
-- "sufficient": the evidence clearly contains everything needed to answer the question directly.
-- "weak": the evidence is somewhat related but missing a piece, unclear, or only partially relevant.
-- "insufficient": the evidence is irrelevant or does not address the question at all.
-
-Respond with ONLY the JSON object, no explanation outside the JSON, no markdown formatting."""
+Be concise.
+"""
 
 
 def _run_search(
@@ -47,95 +48,223 @@ def _run_search(
     mock_mode: bool = False,
     trace_id: Optional[str] = None,
 ) -> List[RetrievedChunk]:
+
     if search_type == "table":
-        return search_tables(query, document_id=document_id, mock_mode=mock_mode ,trace_id=trace_id,)
+        return search_tables(
+            query,
+            document_id=document_id,
+            mock_mode=mock_mode,
+        )
+
     else:
-        # "text" and "hybrid" both go through search_documents,
-        # since it already performs hybrid (semantic + keyword) search
-        return search_documents(query, search_type=search_type, document_id=document_id, mock_mode=mock_mode , trace_id=trace_id,)
+        return search_documents(
+            query,
+            search_type=search_type,
+            document_id=document_id,
+            mock_mode=mock_mode,
+        )
 
 
 def _rule_based_check(chunks: List[RetrievedChunk]) -> bool:
-    """
-    Fast, free check: did we get anything back at all?
-    Returns True if chunks exist (passes rule-based check), False if empty.
-    """
     return len(chunks) > 0
 
 
-def _llm_relevance_check(question: str, chunks: List[RetrievedChunk]) -> SufficiencyResult:
-    """
-    Slower, smarter check: only runs when chunks exist, to judge whether
-    they're actually relevant and complete enough to answer the question.
-    """
-    evidence_text = "\n".join(
-        f"- [{c.document_id}, page {c.page}, {c.section}]: {c.text}" for c in chunks
+def _llm_relevance_check(
+    question: str,
+    chunks: List[RetrievedChunk],
+) -> SufficiencyResult:
+
+    evidence_text = "\n\n".join(
+        [
+            f"Document: {c.document_id}\n"
+            f"Page: {c.page}\n"
+            f"Content:\n{c.text}"
+            for c in chunks
+        ]
     )
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": SUFFICIENCY_SYSTEM_PROMPT},
-            {"role": "user", "content": f"QUESTION: {question}\n\nEVIDENCE:\n{evidence_text}"},
-        ],
-        response_format={"type": "json_object"},
-        temperature=0,
-    )
+    prompt = f"""
+Question:
+{question}
 
-    raw_output = response.choices[0].message.content
+Retrieved evidence:
+{evidence_text}
+
+Determine whether the retrieved evidence is sufficient to answer
+the question accurately.
+"""
 
     try:
-        parsed = json.loads(raw_output)
-        return SufficiencyResult(**parsed)
-    except Exception as exc:
-        print(f"[retriever] Failed to parse sufficiency check, defaulting to 'weak'. Error: {exc}")
-        return SufficiencyResult(status="weak", reason="Sufficiency check failed to parse.")
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {
+                    "role": "system",
+                    "content": SUFFICIENCY_SYSTEM_PROMPT,
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
+            temperature=0,
+        )
+
+        content = response.choices[0].message.content
+
+        if not content:
+            return SufficiencyResult(
+                status="weak",
+                reason="The relevance checker returned no response.",
+            )
+
+        # Try to parse JSON response
+        try:
+            data = json.loads(content)
+            return SufficiencyResult(
+                status=data.get("status", "weak"),
+                reason=data.get(
+                    "reason",
+                    "Evidence relevance could not be fully determined.",
+                ),
+            )
+
+        except json.JSONDecodeError:
+            content_lower = content.lower()
+
+            if "sufficient" in content_lower:
+                return SufficiencyResult(
+                    status="sufficient",
+                    reason=content,
+                )
+
+            if "insufficient" in content_lower:
+                return SufficiencyResult(
+                    status="insufficient",
+                    reason=content,
+                )
+
+            return SufficiencyResult(
+                status="weak",
+                reason=content,
+            )
+
+    except Exception as e:
+        return SufficiencyResult(
+            status="weak",
+            reason=f"Relevance check failed: {str(e)}",
+        )
 
 
-def retrieve_evidence(state: AgentState, mock_mode: bool = False) -> AgentState:
-    """
-    LangGraph node: executes search based on the classifier's plan, collects
-    evidence, and judges whether it's sufficient using the hybrid check.
-    """
+def retrieve_evidence(
+    state: AgentState,
+    mock_mode: bool = False,
+) -> AgentState:
+
     question = state["question"]
-    search_type = state.get("search_type", "hybrid")
-    sub_queries = state.get("sub_queries", [])
-    document_id = state.get("document_id")
-    trace_id = state.get("trace_id")
-    # If the classifier broke the question into sub-queries, search each one.
-    # Otherwise, just search the main question directly.
-    queries = [sq["query"] for sq in sub_queries] if sub_queries else [question]
+
+    search_type = state.get(
+        "search_type",
+        "hybrid",
+    )
+
+    sub_queries = state.get(
+        "sub_queries",
+        [],
+    )
+
+    document_id = state.get(
+        "document_id",
+    )
+
+    queries = (
+        [sq["query"] for sq in sub_queries]
+        if sub_queries
+        else [question]
+    )
 
     all_chunks: List[RetrievedChunk] = []
+
+    # Search for evidence for every query
     for query in queries:
-        chunks = _run_search(query, search_type, document_id=document_id, mock_mode=mock_mode , trace_id=trace_id,)
+
+        chunks = _run_search(
+            query,
+            search_type=search_type,
+            document_id=document_id,
+            mock_mode=mock_mode,
+        )
+
         all_chunks.extend(chunks)
 
+    # Remove duplicate chunks
+    unique_chunks = {}
+
+    for chunk in all_chunks:
+        unique_chunks[chunk.chunk_id] = chunk
+
+    all_chunks = list(unique_chunks.values())
+
+    # No evidence found
     if not _rule_based_check(all_chunks):
+
         state["retrieved_chunks"] = all_chunks
+
         state["evidence_status"] = "insufficient"
+
         state["evidence"] = []
-        state["retry_count"] = state.get("retry_count", 0) + 1
+
+        state["retry_count"] = state.get(
+            "retry_count",
+            0,
+        ) + 1
+
+        state["reasoning_summary"] = (
+            "No relevant evidence was retrieved."
+        )
+
         return state
-    sufficiency = _llm_relevance_check(question, all_chunks)
+
+    # Check whether evidence is sufficient
+    sufficiency = _llm_relevance_check(
+        question,
+        all_chunks,
+    )
 
     state["retrieved_chunks"] = all_chunks
+
     state["evidence_status"] = sufficiency.status
+
     state["reasoning_summary"] = sufficiency.reason
 
     state["evidence"] = [
-        DocumentCitation(document_id=c.document_id, page=c.page, section=c.section)
+        DocumentCitation(
+            document_id=c.document_id,
+            page=c.page,
+            section=c.section,
+        )
         for c in all_chunks
     ]
-
-    if sufficiency.status != "sufficient":
-        state["retry_count"] = state.get("retry_count", 0) + 1
 
     return state
 
 
-def should_retry(state: AgentState) -> bool:
-  
-    status = state.get("evidence_status")
-    retries = state.get("retry_count", 0)
-    return status != "sufficient" and retries < MAX_RETRIES
+def should_retry(state: AgentState) -> str:
+
+    evidence_status = state.get(
+        "evidence_status",
+        "insufficient",
+    )
+
+    retry_count = state.get(
+        "retry_count",
+        0,
+    )
+
+    if (
+        evidence_status in ["weak", "insufficient"]
+        and retry_count < MAX_RETRIES
+    ):
+        return "retry"
+
+    return "continue"

@@ -83,7 +83,21 @@ Rules for question_type:
   IMPORTANT: Merely asking for a percentage, proportion, ratio, or values from multiple years does NOT make a question "calculated".
   If the percentage/proportion/ratio is already explicitly stated in the evidence, use "multi_span".
 
-- "insufficient_evidence": only use this if the question is clearly unanswerable or nonsensical from context alone."""
+- "insufficient_evidence": DO NOT use this for normal financial questions just because
+  you do not know the answer yourself. The classifier does not have access to the documents
+  or retrieved evidence, so it cannot determine whether evidence is sufficient.
+  Use "insufficient_evidence" ONLY if the question itself is genuinely nonsensical,
+  malformed, or impossible to interpret as a financial-document question.
+
+IMPORTANT:
+- Never classify a normal, understandable financial question as "insufficient_evidence"
+  merely because you cannot answer it from the question alone.
+- Your job is to classify the TYPE of information being requested, not whether the
+  information exists in the documents.
+- If the question asks for a fact, explanation, reason, definition, or statement that
+  could reasonably appear in a financial report, classify it as "direct".
+- Evidence sufficiency will be determined later by the retrieval stage.
+"""
 
 
 def classify_question(state: AgentState) -> AgentState:
