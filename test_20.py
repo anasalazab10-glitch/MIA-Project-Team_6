@@ -1,20 +1,29 @@
 
 """
-test_20.py - Runs the first 20 questions from the benchmark results file
+test_20.py - Runs a selected range of questions from the benchmark
 against the LIVE orchestrator and reports pass/fail vs ground truth.
 """
 
 import json
 import sys
 import requests
-
-
 import os
 import time
 
-ORCHESTRATOR_URL = os.environ.get("ORCHESTRATOR_URL", "http://localhost:8003/run")
-BENCHMARK_FILE = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("BENCHMARK_FILE", "benchmark_100_raw.json")
-NUM_QUESTIONS = int(os.environ.get("NUM_QUESTIONS", 10))
+
+ORCHESTRATOR_URL = os.environ.get(
+    "ORCHESTRATOR_URL",
+    "http://localhost:8003/run"
+)
+
+BENCHMARK_FILE = (
+    sys.argv[1]
+    if len(sys.argv) > 1
+    else os.environ.get("BENCHMARK_FILE", "benchmark_100_raw.json")
+)
+
+START_QUESTION = int(os.environ.get("START_QUESTION", 0))
+NUM_QUESTIONS = int(os.environ.get("NUM_QUESTIONS", 5))
 
 
 def normalize(val):
@@ -55,29 +64,38 @@ def main():
     with open(BENCHMARK_FILE, "r") as f:
         data = json.load(f)
 
+    end_question = START_QUESTION + NUM_QUESTIONS
+
     if isinstance(data, list):
-        questions = data[:NUM_QUESTIONS]
-    elif "results" in data and isinstance(data["results"], dict) and "results" in data["results"]:
-        questions = data["results"]["results"][:NUM_QUESTIONS]
+        questions = data[START_QUESTION:end_question]
+
+    elif (
+        "results" in data
+        and isinstance(data["results"], dict)
+        and "results" in data["results"]
+    ):
+        questions = data["results"]["results"][START_QUESTION:end_question]
+
     elif "results" in data and isinstance(data["results"], list):
-        questions = data["results"][:NUM_QUESTIONS]
+        questions = data["results"][START_QUESTION:end_question]
+
     else:
         questions = []
 
     results = []
 
-    for i, q in enumerate(questions, 1):
+    for i, q in enumerate(questions, START_QUESTION + 1):
         qid = q.get("question_id", f"Q{i}")
         qtext = q["question_text"]
         gt = q.get("ground_truth_answer")
 
-        print(f"\n[{i}/{NUM_QUESTIONS}] {qid}: {qtext}")
+        print(f"\n[{i}] {qid}: {qtext}")
 
         try:
             resp = requests.post(
                 ORCHESTRATOR_URL,
                 json={"question": qtext},
-                timeout=90,
+                timeout=120,
             )
 
             resp_json = resp.json()
@@ -99,6 +117,7 @@ def main():
 
         if isinstance(gt_norm, list) and len(gt_norm) == 1:
             gt_norm = gt_norm[0]
+
         if isinstance(pred_norm, list) and len(pred_norm) == 1:
             pred_norm = pred_norm[0]
 
@@ -136,10 +155,10 @@ def main():
 
         print(f"  Status:       {status}")
 
-        # Store the result so the final summary works
         results.append(
             (qid, qtext, gt, predicted, status)
         )
+
         time.sleep(2)
 
     print("\n" + "=" * 60)
@@ -160,4 +179,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

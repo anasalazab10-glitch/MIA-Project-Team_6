@@ -196,7 +196,7 @@ def retrieve_evidence(
                             document_id=doc_id,
                             mock_mode=mock_mode,
                         )
-                        sq_chunks.extend(chunks)
+                        sq_chunks.extend(chunks[:3])
             else:
                 # Fallback to global search when no document scoping is available
                 global_chunks = _run_search(
@@ -205,7 +205,7 @@ def retrieve_evidence(
                     document_id=None,
                     mock_mode=mock_mode,
                 )
-                sq_chunks.extend(global_chunks)
+                sq_chunks.extend(global_chunks[:6])
 
             # Deduplicate sq_chunks by chunk_id, preserving the highest score
             unique_sq = {}
@@ -221,8 +221,8 @@ def retrieve_evidence(
                 # Take top 3 chunks per subquery so each entity is represented
                 all_chunks.extend(sorted_sq[:3])
             else:
-                # Take top 6 chunks for this subquery
-                all_chunks.extend(sorted_sq[:6])
+                # Take top 8 chunks for this subquery
+                all_chunks.extend(sorted_sq[:8])
     else:
         if global_doc_id:
             chunks = _run_search(

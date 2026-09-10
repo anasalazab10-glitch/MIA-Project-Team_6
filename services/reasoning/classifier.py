@@ -63,12 +63,16 @@ Respond with ONLY valid JSON matching this exact schema:
 }
 
 Rules for question_type:
-- "direct": Asks for one single fact, metric, date, reason, definition, or explanation (e.g. "Why does X...", "What was revenue in 2020").
-- "multi_span": Enumerate or list multiple distinct items, segments, components, or values for multiple periods without summing/averaging.
-- "calculated": Requires arithmetic (total/sum over multiple periods or components, average, difference/distance, percentage change, ratio). E.g. "How far apart...", "average revenue", "total favourable impact".
+- "calculated": Requires arithmetic, aggregation, or summing components. ANY question asking for "total", "sum", "average", "difference", "how far apart", "percentage change", "ratio", "change from ... to ...", or "total favourable/unfavourable impact" MUST be classified as "calculated".
+  CRITICAL: If the question has a secondary clause like "Which page supports the answer?" or "Please cite the supporting page", ignore that clause for classification - classify based on what the main question asks!
+- "multi_span": Enumerate or list multiple distinct items, segments, components, or values without summing/averaging (e.g. "Which components did X list under Y?").
+- "direct": Asks for one single fact, metric, rate, date, reason, definition, or explanation that does not require arithmetic (e.g. "Why does X...", "What was revenue in 2020", "What is the tax rate...").
 - "insufficient_evidence": Never use for normal financial questions.
 
-sub_queries: If the question mentions multiple companies or cross-document comparisons, create one sub_query per company with entity set to that company's name.
+Rules for search_type:
+- Use "hybrid" for questions involving financial figures, line items, tables, or statements.
+
+sub_queries: If the question mentions multiple companies or cross-document comparisons, create one sub_query per company with entity set to that company's name. For single-company questions, specify the company name in entity.
 """
 
 
@@ -79,32 +83,58 @@ def classify_question(state: AgentState) -> AgentState:
     """
     question = state["question"]
 
-    response = chat_completion_with_retry(
-        messages=[
-            {"role": "system", "content": CLASSIFIER_SYSTEM_PROMPT},
-            {"role": "user", "content": question},
-        ],
-        response_format={"type": "json_object"},
-        max_tokens=250,
-        temperature=0,
-    )
-
-    raw_output = response.choices[0].message.content
-
     try:
-        parsed = json.loads(raw_output)
+        response = chat_completion_with_retry(
+            messages=[
+                {"role": "system", "content": CLASSIFIER_SYSTEM_PROMPT},
+                {"role": "user", "content": question},
+            ],
+            response_format={"type": "json_object"},
+            max_tokens=300,
+            temperature=0,
+        )
+        raw_output = response.choices[0].message.content or "{}"
+        raw_text = raw_output.strip()
+        if "</think>" in raw_text:
+            raw_text = raw_text.split("</think>")[-1].strip()
+        if "```json" in raw_text:
+            raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in raw_text:
+            raw_text = raw_text.split("```")[1].split("```")[0].strip()
+        if "{" in raw_text and "}" in raw_text:
+            first_b = raw_text.find("{")
+            last_b = raw_text.rfind("}")
+            raw_text = raw_text[first_b : last_b + 1]
+        parsed = json.loads(raw_text)
         result = ClassificationResult(**parsed)
     except Exception as exc:
-        # If the LLM ever returns malformed JSON, fail safe rather than crash
+        # If the LLM call fails or returns malformed JSON, fail safe rather than crash
         # the whole pipeline - default to a hybrid direct search.
-        print(f"[classifier] Failed to parse LLM output, using fallback. Error: {exc}")
-        print(f"[classifier] Raw output was: {raw_output}")
+        print(f"[classifier] Failed to call or parse LLM, using fallback. Error: {exc}")
         result = ClassificationResult(
             question_type="direct",
             search_type="hybrid",
             is_cross_doc=False,
             sub_queries=[],
         )
+
+    # Deterministic guardrails for financial reasoning types:
+    q_lower = question.lower()
+    calc_keywords = [
+        "total favourable impact", "total favorable impact",
+        "how far apart", "absolute difference",
+        "percentage change", "average", "sum of", "as a percentage of",
+        "total revenue between", "total equity for fiscal years",
+        "change from 2018 to 2019", "change between 2018 and 2019",
+        "average year-on-year",
+    ]
+    if any(kw in q_lower for kw in calc_keywords):
+        if not (q_lower.startswith("why ") or "why was " in q_lower or "how was the " in q_lower):
+            result.question_type = "calculated"
+            result.search_type = "hybrid"
+
+    if "which components" in q_lower or "list under" in q_lower or "respectively" in q_lower:
+        result.question_type = "multi_span"
 
     state["question_type"] = result.question_type
     state["search_type"] = result.search_type

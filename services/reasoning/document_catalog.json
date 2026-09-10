@@ -355,6 +355,18 @@
     "95772891385308ecfe196a8abac82dea": {
       "company": "CTS Corporation",
       "source_document": "cts-corporation_2019.pdf"
+    },
+    "880c1e63bbd51423025e4b4b001169ef": {
+      "company": "International Business Machines Corp",
+      "source_document": "international-business-machines-corp_2019.pdf"
+    },
+    "24b827b9363a983d137922c8c97569c0": {
+      "company": "International Business Machines Corp",
+      "source_document": "international-business-machines-corp_2019.pdf"
+    },
+    "d49b26235ef452d12388cf6f2f818a11": {
+      "company": "International Business Machines Corp",
+      "source_document": "international-business-machines-corp_2019.pdf"
     }
   },
   "company_to_docs": {
@@ -598,7 +610,10 @@
     "international business machines corp": [
       "41cd0d70ae65f119b4a082c6941cae9e",
       "560af8f8e7ae482dfe7a26354f5afa21",
-      "9a1188d2fbabb6aa7bc28d23766c3944"
+      "9a1188d2fbabb6aa7bc28d23766c3944",
+      "880c1e63bbd51423025e4b4b001169ef",
+      "24b827b9363a983d137922c8c97569c0",
+      "d49b26235ef452d12388cf6f2f818a11"
     ],
     "international": [
       "41cd0d70ae65f119b4a082c6941cae9e",
@@ -659,6 +674,22 @@
     "atlassian corporation plc": [
       "804f29c81d3a7446d25dc65fae9dcc24",
       "ad41cd9a9d25c3a1583098c1d3cf7ac7"
+    ],
+    "ibm": [
+      "41cd0d70ae65f119b4a082c6941cae9e",
+      "560af8f8e7ae482dfe7a26354f5afa21",
+      "9a1188d2fbabb6aa7bc28d23766c3944",
+      "880c1e63bbd51423025e4b4b001169ef",
+      "24b827b9363a983d137922c8c97569c0",
+      "d49b26235ef452d12388cf6f2f818a11"
+    ],
+    "international business machines": [
+      "41cd0d70ae65f119b4a082c6941cae9e",
+      "560af8f8e7ae482dfe7a26354f5afa21",
+      "9a1188d2fbabb6aa7bc28d23766c3944",
+      "880c1e63bbd51423025e4b4b001169ef",
+      "24b827b9363a983d137922c8c97569c0",
+      "d49b26235ef452d12388cf6f2f818a11"
     ]
   }
 }
