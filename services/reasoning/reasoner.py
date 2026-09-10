@@ -253,11 +253,16 @@ def reason_over_evidence(state: AgentState) -> AgentState:
             {"role": "system", "content": REASONER_SYSTEM_PROMPT},
             {"role": "user", "content": user_message},
         ],
+        model="qwen/qwen3.8-27b",
         response_format={"type": "json_object"},
         temperature=0,
+        max_tokens=1000,
     )
 
-    raw_output = response.choices[0].message.content
+    msg = response.choices[0].message
+    raw_output = msg.content or ""
+    if not raw_output and getattr(msg, "reasoning", None):
+        raw_output = msg.reasoning or ""
 
     try:
         parsed = json.loads(raw_output)
