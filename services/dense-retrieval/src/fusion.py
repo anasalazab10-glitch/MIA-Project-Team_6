@@ -1,3 +1,4 @@
+
 """Reciprocal Rank Fusion (RRF) & Hybrid Retrieval Pipeline.
 
 Merges ranked candidate lists from BM25 keyword search and Dense vector search
@@ -5,7 +6,7 @@ Merges ranked candidate lists from BM25 keyword search and Dense vector search
 for downstream cross-encoder reranking.
 
 Formula:
-    RRF_score(d) = \\sum_{m \\in M} \\frac{w_m}{k + rank_m(d)}
+    RRF_score(d) = \sum_{m \in M} \frac{w_m}{k + rank_m(d)}
 """
 
 import json
@@ -50,17 +51,30 @@ def reciprocal_rank_fusion(
 
     if isinstance(ranked_lists, dict):
         normalized_lists = ranked_lists
+
         if isinstance(weights, dict):
-            normalized_weights = {name: weights.get(name, 1.0) for name in ranked_lists}
+            normalized_weights = {
+                name: weights.get(name, 1.0)
+                for name in ranked_lists
+            }
+
         elif isinstance(weights, list):
             for i, name in enumerate(ranked_lists):
-                normalized_weights[name] = weights[i] if i < len(weights) else 1.0
+                normalized_weights[name] = (
+                    weights[i] if i < len(weights) else 1.0
+                )
+
         else:
-            normalized_weights = {name: 1.0 for name in ranked_lists}
+            normalized_weights = {
+                name: 1.0
+                for name in ranked_lists
+            }
+
     else:
         for idx, cand_list in enumerate(ranked_lists):
             name = f"retriever_{idx}"
             normalized_lists[name] = cand_list
+
             if isinstance(weights, list) and idx < len(weights):
                 normalized_weights[name] = weights[idx]
             else:
@@ -83,12 +97,17 @@ def reciprocal_rank_fusion(
                 source_scores[chunk_id] = {}
                 source_ranks[chunk_id] = {}
 
-            # Use candidate's explicit rank if available, otherwise 1-based list index
+            # Use candidate's explicit rank if available,
+            # otherwise use the 1-based list index.
             cand_rank = candidate.rank if candidate.rank else rank
 
-            # RRF calculation: weight / (k + cand_rank)
+            # RRF calculation:
+            # weighted contribution = retriever_weight / (k + rank)
             component = weight / (k + cand_rank)
-            rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) + component
+
+            rrf_scores[chunk_id] = (
+                rrf_scores.get(chunk_id, 0.0) + component
+            )
 
             source_scores[chunk_id][method_name] = candidate.score
             source_ranks[chunk_id][f"{method_name}_rank"] = cand_rank
@@ -98,20 +117,30 @@ def reciprocal_rank_fusion(
                     if k_score not in source_scores[chunk_id]:
                         source_scores[chunk_id][k_score] = v_score
 
-    sorted_chunks = sorted(rrf_scores.items(), key=lambda item: item[1], reverse=True)
+    sorted_chunks = sorted(
+        rrf_scores.items(),
+        key=lambda item: item[1],
+        reverse=True,
+    )
 
     fused_candidates: list[Candidate] = []
-    for rank, (chunk_id, score) in enumerate(sorted_chunks[:top_k], start=1):
+
+    for rank, (chunk_id, score) in enumerate(
+        sorted_chunks[:top_k],
+        start=1,
+    ):
         chunk = chunk_store[chunk_id]
 
         scores_dict = dict(source_scores[chunk_id])
         scores_dict["rrf"] = round(score, 6)
 
-        # Attach source ranks to chunk metadata for complete tracing in Langfuse
+        # Attach source ranks to chunk metadata for complete tracing in Langfuse.
         metadata_copy = dict(chunk.metadata)
         metadata_copy.update(source_ranks[chunk_id])
 
-        fused_chunk = chunk.model_copy(update={"metadata": metadata_copy})
+        fused_chunk = chunk.model_copy(
+            update={"metadata": metadata_copy}
+        )
 
         fused_candidates.append(
             Candidate(
@@ -127,6 +156,51 @@ def reciprocal_rank_fusion(
     return fused_candidates
 
 
+# ==================== QUERY-ADAPTIVE RETRIEVAL WEIGHTS ====================
+def get_query_weights(query: str) -> dict[str, float]:
+    """Choose BM25/Dense weights based on the type of query.
+
+    Numerical/table-heavy questions favor BM25 because exact words,
+    numbers, years, percentages, and table labels are important.
+
+    Semantic/text-heavy questions favor Dense retrieval because
+    meaning and paraphrased wording are more important.
+    """
+    query_lower = query.lower()
+
+    numerical_patterns = [
+        "how much",
+        "how many",
+        "what percentage",
+        "what percent",
+        "as a %",
+        "as a percentage",
+        "total",
+        "average",
+        "top ",
+        "highest",
+        "lowest",
+        "respectively",
+    ]
+
+    numerical_score = sum(
+        1
+        for pattern in numerical_patterns
+        if pattern in query_lower
+    )
+
+    if numerical_score >= 2:
+        return {"bm25": 0.7, "dense": 0.3}
+
+    if numerical_score == 1:
+        return {"bm25": 0.55, "dense": 0.45}
+
+    return {"bm25": 0.3, "dense": 0.7}
+
+
+# ==================== END QUERY-ADAPTIVE RETRIEVAL WEIGHTS ====================
+
+
 class RRFFusion:
     """Configurable Reciprocal Rank Fusion stage."""
 
@@ -137,28 +211,50 @@ class RRFFusion:
         default_top_k: int = 30,
     ) -> None:
         self.k = k
-        self.weights = weights or {"bm25": 1.0, "dense": 1.0}
+        self.weights = weights or {
+            "bm25": 1.0,
+            "dense": 1.0,
+        }
         self.default_top_k = default_top_k
 
+    # ==================== QUERY-ADAPTIVE RRF FUSION ====================
     def fuse(
         self,
         ranked_lists: dict[str, list[Candidate]] | list[list[Candidate]],
         top_k: int | None = None,
+        weights: dict[str, float] | None = None,
     ) -> list[Candidate]:
-        k_val = top_k if top_k is not None else self.default_top_k
+        """Fuse ranked lists using either query-specific or default weights."""
+        k_val = (
+            top_k
+            if top_k is not None
+            else self.default_top_k
+        )
+
+        # Use query-specific weights when provided.
+        # Otherwise, fall back to the configured default weights.
+        fusion_weights = (
+            weights
+            if weights is not None
+            else self.weights
+        )
+
         return reciprocal_rank_fusion(
             ranked_lists=ranked_lists,
             k=self.k,
-            weights=self.weights,
+            weights=fusion_weights,
             top_k=k_val,
         )
+
+    # ==================== END QUERY-ADAPTIVE RRF FUSION ====================
 
 
 class HybridRetriever:
     """Integrated Hybrid Retriever orchestrating BM25, Dense Retrieval, and RRF Fusion.
-    
-    Combines lexical precision (BM25) with semantic vector recall (Dense/Qdrant)
-    to return top candidates for the downstream Cross-Encoder reranker.
+
+    Combines lexical precision (BM25) with semantic vector recall
+    (Dense/Qdrant) to return top candidates for the downstream
+    Cross-Encoder reranker.
     """
 
     def __init__(
@@ -169,7 +265,14 @@ class HybridRetriever:
     ) -> None:
         self.bm25_retriever = bm25_retriever
         self.dense_retriever = dense_retriever
-        self.fusion = fusion or RRFFusion(k=60, weights={"bm25": 1.0, "dense": 1.0})
+
+        self.fusion = fusion or RRFFusion(
+            k=60,
+            weights={
+                "bm25": 1.0,
+                "dense": 1.0,
+            },
+        )
 
     def search(
         self,
@@ -180,6 +283,7 @@ class HybridRetriever:
         metadata_filter: dict[str, Any] | None = None,
     ) -> RetrievalResponse:
         """Run hybrid retrieval: executes BM25 and Dense search, then fuses with RRF."""
+
         # 1. Lexical retrieval via BM25
         bm25_candidates = self.bm25_retriever.search(
             query=query,
@@ -192,16 +296,31 @@ class HybridRetriever:
             query=query,
             top_k=dense_top_k,
         )
+
         dense_candidates = dense_response.candidates
 
-        # 3. Fuse candidate sets using Reciprocal Rank Fusion
+        # ==================== QUERY-ADAPTIVE RRF FUSION ====================
+        # Choose which retriever should have more influence based on the query.
+        # Numerical/table-heavy queries favor BM25.
+        # Semantic/text-heavy queries favor Dense retrieval.
+        query_weights = get_query_weights(query)
+
+        # Temporary debug output so we can verify the selected weights
+        # while testing the benchmark.
+        print(
+            f"[Adaptive RRF] BM25 weight: {query_weights['bm25']} | "
+            f"Dense weight: {query_weights['dense']}"
+        )
+
         fused_candidates = self.fusion.fuse(
             ranked_lists={
                 "bm25": bm25_candidates,
                 "dense": dense_candidates,
             },
+            weights=query_weights,
             top_k=top_k,
         )
+        # ==================== END QUERY-ADAPTIVE RRF FUSION ====================
 
         return RetrievalResponse(
             query=query,
@@ -217,25 +336,36 @@ def build_hybrid_pipeline(
     vector_size: int = 384,
 ) -> HybridRetriever:
     """Factory function to instantiate and index both BM25 and Dense retrievers."""
+
     # 1. Build BM25 index
     bm25 = BM25Retriever(chunks)
 
     # 2. Build Dense vector index
-    embedding_model = EmbeddingModel(model_name=embedding_model_name)
+    embedding_model = EmbeddingModel(
+        model_name=embedding_model_name
+    )
+
     embeddings = embedding_model.encode_chunks(chunks)
 
     vector_store = VectorStore(
         collection_name=collection_name,
         vector_size=vector_size,
     )
-    vector_store.add_chunks(chunks, embeddings)
+
+    vector_store.add_chunks(
+        chunks,
+        embeddings,
+    )
 
     dense = DenseRetriever(
         embedding_model=embedding_model,
         vector_store=vector_store,
     )
 
-    return HybridRetriever(bm25_retriever=bm25, dense_retriever=dense)
+    return HybridRetriever(
+        bm25_retriever=bm25,
+        dense_retriever=dense,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -243,15 +373,32 @@ def build_hybrid_pipeline(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    mock_path = Path(__file__).resolve().parent.parent / "data" / "mock_chunks.json"
+    mock_path = (
+        Path(__file__).resolve().parent.parent
+        / "data"
+        / "mock_chunks.json"
+    )
+
     with open(mock_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    chunks = [Chunk.model_validate(item) for item in data]
-    print(f"Loaded {len(chunks)} chunks for end-to-end Hybrid RRF test.\n")
+    chunks = [
+        Chunk.model_validate(item)
+        for item in data
+    ]
 
-    print("Building Hybrid Retriever (BM25 + Qdrant Dense + BGE embeddings)...")
+    print(
+        f"Loaded {len(chunks)} chunks for end-to-end "
+        f"Hybrid RRF test.\n"
+    )
+
+    print(
+        "Building Hybrid Retriever "
+        "(BM25 + Qdrant Dense + BGE embeddings)..."
+    )
+
     hybrid = build_hybrid_pipeline(chunks)
+
     print("Hybrid Retriever successfully built!\n")
 
     test_queries = [
@@ -264,18 +411,43 @@ if __name__ == "__main__":
         print("=" * 70)
         print(f"Query: '{q}'")
         print("=" * 70)
-        response = hybrid.search(q, top_k=5)
+
+        response = hybrid.search(
+            q,
+            top_k=5,
+        )
 
         for cand in response.candidates:
-            b_rank = cand.chunk.metadata.get("bm25_rank", "-")
-            d_rank = cand.chunk.metadata.get("dense_rank", "-")
-            bm25_s = cand.scores.get("bm25", "-")
-            dense_s = cand.scores.get("dense", "-")
+            b_rank = cand.chunk.metadata.get(
+                "bm25_rank",
+                "-",
+            )
+
+            d_rank = cand.chunk.metadata.get(
+                "dense_rank",
+                "-",
+            )
+
+            bm25_s = cand.scores.get(
+                "bm25",
+                "-",
+            )
+
+            dense_s = cand.scores.get(
+                "dense",
+                "-",
+            )
+
             print(
-                f"[Rank {cand.rank}] RRF Score: {cand.score:.6f} | "
+                f"[Rank {cand.rank}] "
+                f"RRF Score: {cand.score:.6f} | "
                 f"ID: {cand.chunk.chunk_id} | "
-                f"BM25 Rank: {b_rank} (Score: {bm25_s}) | "
-                f"Dense Rank: {d_rank} (Score: {dense_s}) | "
+                f"BM25 Rank: {b_rank} "
+                f"(Score: {bm25_s}) | "
+                f"Dense Rank: {d_rank} "
+                f"(Score: {dense_s}) | "
                 f"Section: '{cand.chunk.section}'"
             )
+
         print()
+

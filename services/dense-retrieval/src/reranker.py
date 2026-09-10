@@ -206,7 +206,7 @@ if __name__ == "__main__":
         final_top_k=5,
     )
     print("Pipeline ready!\n")
-
+    
     test_queries = [
         "How much R&D did the company spend in 2023?",
         "What was the operating income and net profit in 2024?",
@@ -233,4 +233,4 @@ if __name__ == "__main__":
                 f"Section: '{cand.chunk.section}'\n"
                 f"    Evidence Citation: {cand.chunk.to_evidence().model_dump()}"
             )
-        print()
+        print() 
