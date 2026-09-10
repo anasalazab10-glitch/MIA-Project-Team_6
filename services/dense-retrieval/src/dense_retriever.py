@@ -4,6 +4,7 @@ from src.schemas import (
     Chunk,
     RetrievalMethod,
     RetrievalResponse,
+   ContentType,
 )
 from src.vector_store import VectorStore
 
@@ -15,7 +16,7 @@ class DenseRetriever:
         self.embedding_model = embedding_model
         self.vector_store = vector_store
 
-    def retrieve(self,query: str,top_k: int = DEFAULT_TOP_K,document_id: str | None = None,) -> RetrievalResponse:
+    def retrieve(self,query: str ,  content_type: ContentType | None = None,top_k: int = DEFAULT_TOP_K,document_id: str | None = None,) -> RetrievalResponse:
         """
         Perform dense retrieval for a user query.
 
@@ -33,6 +34,7 @@ class DenseRetriever:
             query_embedding,
             top_k=top_k,
             document_id=document_id,
+	    content_type=content_type,
         )
 
         # 3. Convert Qdrant results into Candidate objects

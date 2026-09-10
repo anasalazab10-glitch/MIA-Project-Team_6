@@ -24,7 +24,7 @@ class Settings(BaseModel):
     # Timeouts in seconds
     doc_processor_timeout: float = float(os.getenv("DOC_PROCESSOR_TIMEOUT", "120.0"))
     retrieval_timeout: float = float(os.getenv("RETRIEVAL_TIMEOUT", "30.0"))
-    reasoning_timeout: float = float(os.getenv("REASONING_TIMEOUT", "60.0"))
+    reasoning_timeout: float = float(os.getenv("REASONING_TIMEOUT", "120.0"))
     validator_timeout: float = float(os.getenv("VALIDATOR_TIMEOUT", "15.0"))
 
     # Data persistence directory for dashboard & document catalog

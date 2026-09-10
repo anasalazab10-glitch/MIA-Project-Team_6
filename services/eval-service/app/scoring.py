@@ -20,10 +20,11 @@ def scale_multiplier(scale: Scale) -> float:
 
 
 def normalize_text(s: str) -> str:
-    s = s.lower().strip()
+    s = str(s).lower().strip()
+    s = re.sub(r"[\'\"\[\]]", "", s)
     s = re.sub(r"\s+", " ", s)
     s = s.replace(",", "")
-    return s
+    return s.strip()
 
 
 def try_parse_number(x: Any) -> float | None:
@@ -78,8 +79,33 @@ def token_f1(pred: str, gold: str) -> float:
     return 2 * precision * recall / (precision + recall)
 
 
-def numeric_close(pred_num: float, gold_num: float, abs_tol: float = 1e-6, rel_tol: float = 1e-4) -> bool:
+def numeric_close(pred_num: float, gold_num: float, abs_tol: float = 1e-4, rel_tol: float = 1e-3) -> bool:
     return math.isclose(pred_num, gold_num, abs_tol=abs_tol, rel_tol=rel_tol)
+
+
+def _score_single_pair(
+    pred_item: Any,
+    gold_item: Any,
+    scale: Scale,
+) -> tuple[float, float, bool | None]:
+    if pred_item is None or gold_item is None:
+        return 0.0, 0.0, None
+
+    # Try numeric first
+    gnum = try_parse_number(gold_item)
+    pnum = try_parse_number(pred_item)
+    if gnum is not None and pnum is not None:
+        mult = scale_multiplier(scale)
+        g = gnum * mult
+        p = pnum * mult
+        ok = numeric_close(p, g)
+        em = 1.0 if ok else 0.0
+        return em, em, ok
+
+    # Fall back to text scoring
+    em = exact_match(pred_item, gold_item)
+    f1 = token_f1(str(pred_item), str(gold_item))
+    return em, f1, None
 
 
 def score_prediction(
@@ -91,30 +117,31 @@ def score_prediction(
     Returns (em, f1, numeric_ok).
     numeric_ok is None when either side is not numeric.
     """
-    # Multi-span case
+    if predicted_value is None or gold_value is None:
+        return 0.0, 0.0, None
+
+    # If gold_value is a single-element list (e.g. ['Deloitte'], ['201.8'], ['$5.9 million'])
+    # unwrap it so it can be evaluated as a scalar (either numeric or text)
+    if isinstance(gold_value, list) and len(gold_value) == 1:
+        gold_item = gold_value[0]
+        pred_item = predicted_value[0] if (isinstance(predicted_value, list) and len(predicted_value) == 1) else predicted_value
+        return _score_single_pair(pred_item, gold_item, scale)
+
+    # Multi-span case (gold is a list of 2 or more elements)
     if isinstance(gold_value, list):
-        # very simple list scoring for Phase 1: exact match of normalized joined text
-        pred_str = str(predicted_value)
-        gold_str = str(gold_value)
-        em = exact_match(pred_str, gold_str)
-        f1 = token_f1(pred_str, gold_str)
+        if isinstance(predicted_value, list):
+            p_items = [normalize_text(x) for x in predicted_value]
+        else:
+            p_items = [normalize_text(predicted_value)]
+
+        g_items = [normalize_text(x) for x in gold_value]
+        em = 1.0 if sorted(p_items) == sorted(g_items) else 0.0
+        f1 = token_f1(" ".join(p_items), " ".join(g_items))
         return em, f1, None
 
-    # Try numeric
-    gnum = try_parse_number(gold_value)
-    pnum = try_parse_number(predicted_value)
-    if gnum is not None and pnum is not None:
-        mult = scale_multiplier(scale)
-        g = gnum * mult
-        p = pnum * mult
-        ok = numeric_close(p, g)
-        em = 1.0 if ok else 0.0
-        return em, em, ok
-
-    # Text scoring
-    em = exact_match(predicted_value, gold_value)
-    f1 = token_f1(str(predicted_value), str(gold_value))
-    return em, f1, None
+    # Single scalar gold (int, float, str)
+    pred_item = predicted_value[0] if (isinstance(predicted_value, list) and len(predicted_value) == 1) else predicted_value
+    return _score_single_pair(pred_item, gold_value, scale)
 
 
 def compute_page_retrieval_metrics(

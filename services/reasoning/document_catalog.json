@@ -1,0 +1,664 @@
+{
+  "doc_to_meta": {
+    "1a515daaf9fc996cd339ed43969e562d": {
+      "company": "Jabil Inc",
+      "source_document": "jabil-circuit-inc_2019.pdf"
+    },
+    "49a7b40ebd9e70c6dd2a9d0e568df0d3": {
+      "company": "Black Knight Financial Services Inc",
+      "source_document": "black-knight-financial-services-inc_2019.pdf"
+    },
+    "ad41cd9a9d25c3a1583098c1d3cf7ac7": {
+      "company": "Atlassian Corporation Plc",
+      "source_document": "atlassian-corp-plc_2019.pdf"
+    },
+    "50e9d6ef41f791b06f41ab77bdb5b5c0": {
+      "company": "Sealed Air Corporation",
+      "source_document": "sealed-air-corporation_2019.pdf"
+    },
+    "80cb9e7eb6ede27b8be716c8516f21c0": {
+      "company": "Sykes Enterprises Incorporated",
+      "source_document": "sykes-enterprises-incorporated_2019.pdf"
+    },
+    "0fc97e08495268a69faf7665c1b5e8ff": {
+      "company": "Spirent Communications Plc",
+      "source_document": "spirent-communications-plc_2019.pdf"
+    },
+    "7b5a6d90c9055a3a2956eb9fd44a3238": {
+      "company": "Jabil Inc",
+      "source_document": "jabil-circuit-inc_2019.pdf"
+    },
+    "65229f9cd95c11408444f2411b3585f0": {
+      "company": "Activision Blizzard Inc",
+      "source_document": "activision-blizzard-inc_2019.pdf"
+    },
+    "aa4b1eb9239628f1a3c4f5b3a8854aab": {
+      "company": "Intu Properties",
+      "source_document": "Intu-Properties_2019.pdf"
+    },
+    "4a3f1946a31eeff078a60885d7994bf9": {
+      "company": "Spirax Sarco Engineering Plc",
+      "source_document": "spirax-sarco-engineering-plc_2019.pdf"
+    },
+    "8304a00edf70ae092a8088b5bc145be3": {
+      "company": "Cogeco Inc",
+      "source_document": "cogeco-inc_2019.pdf"
+    },
+    "cf430eb29c1e40df538d3eb60448b02b": {
+      "company": "Spirax Sarco Engineering Plc",
+      "source_document": "spirax-sarco-engineering-plc_2019.pdf"
+    },
+    "7127cbe483ce13a909d870b85a94783c": {
+      "company": "Advanced Energy",
+      "source_document": "advanced-energy_2019.pdf"
+    },
+    "b6032e4f78d6818baf1f655fe8b2ace5": {
+      "company": "Microsoft Corporation",
+      "source_document": "microsoft-corporation_2019.pdf"
+    },
+    "017b2a0f07f434d81bb05e9877d02d24": {
+      "company": "Iselect Ltd",
+      "source_document": "iselect-ltd_2019.pdf"
+    },
+    "51f82007ca487fa292709d7e5f6d4b3e": {
+      "company": "Jabil Inc",
+      "source_document": "jabil-circuit-inc_2019.pdf"
+    },
+    "66fc388f09125d5fad06681bb94b07f7": {
+      "company": "A10 Networks Inc",
+      "source_document": "a10-networks-inc_2019.pdf"
+    },
+    "607806de4f0f7f8ebea64f70a5a38f67": {
+      "company": "Kemet Corporation",
+      "source_document": "kemet-corporation_2019.pdf"
+    },
+    "a0b02c1ac8cb3ff4ab3e983adc795205": {
+      "company": "Cts Corporation",
+      "source_document": "cts-corporation_2019.pdf"
+    },
+    "0f425496cda5fd263664d2937a3045dc": {
+      "company": "Black Knight Financial Services Inc",
+      "source_document": "black-knight-financial-services-inc_2019.pdf"
+    },
+    "dc0211b1a4cd879610f1800e3b740039": {
+      "company": "Advanced Energy",
+      "source_document": "advanced-energy_2019.pdf"
+    },
+    "c123d7f645eaedce33bcd3349787b01c": {
+      "company": "Plexus Corp",
+      "source_document": "plexus-corp_2019.pdf"
+    },
+    "9cdc7ba8f8e5576b0726a9d2cbc782e5": {
+      "company": "Lam Research Corporation",
+      "source_document": "lam-research-corporation_2019.pdf"
+    },
+    "7f26a71454cf644144359b4fd9b8d19c": {
+      "company": "Adtran Inc",
+      "source_document": "adtran-inc_2019.pdf"
+    },
+    "637dc1556be88dcf37aa11a02a033462": {
+      "company": "Sykes Enterprises Incorporated",
+      "source_document": "sykes-enterprises-incorporated_2019.pdf"
+    },
+    "61ce8de2691e888f09491cfd10772986": {
+      "company": "Plexus Corp",
+      "source_document": "plexus-corp_2019.pdf"
+    },
+    "b1655e48423b0bc73c94a64196daf5f6": {
+      "company": "Torm",
+      "source_document": "torm_2019.pdf"
+    },
+    "298af79b7f27f672bbf2c5ad2d4e40e8": {
+      "company": "Microchip Technology Inc",
+      "source_document": "microchip-technology-inc_2019.pdf"
+    },
+    "0007ac7b0bca04cb3936894a43fac19f": {
+      "company": "Te Connectivity Ltd",
+      "source_document": "te-connectivity-ltd_2019.pdf"
+    },
+    "e3c41237a26126847f78cfbe50f90e87": {
+      "company": "Teekay Corporation",
+      "source_document": "teekay-corporation_2019.pdf"
+    },
+    "b8f96345c149b8b0a58c4ab4d36abc05": {
+      "company": "Teekay Corporation",
+      "source_document": "teekay-corporation_2019.pdf"
+    },
+    "da525ea384ae32e00c70fa4440444832": {
+      "company": "Activision Blizzard Inc",
+      "source_document": "activision-blizzard-inc_2019.pdf"
+    },
+    "063934b9e9aa7a62a74da8ea32e05533": {
+      "company": "Hc2 Holdings Inc",
+      "source_document": "hc2-holdings-inc_2019.pdf"
+    },
+    "b22065d3443d21d0c703c37a214ce04f": {
+      "company": "Spirent Communications Plc",
+      "source_document": "spirent-communications-plc_2019.pdf"
+    },
+    "560af8f8e7ae482dfe7a26354f5afa21": {
+      "company": "International Business Machines Corp",
+      "source_document": "international-business-machines-corp_2019.pdf"
+    },
+    "ab014b37efd7ba6a0d2553f3b55c21d2": {
+      "company": "Microchip Technology Inc",
+      "source_document": "microchip-technology-inc_2019.pdf"
+    },
+    "33b72850f302cf592bd0b18274d67c47": {
+      "company": "Spirent Communications Plc",
+      "source_document": "spirent-communications-plc_2019.pdf"
+    },
+    "524559264a4e33b7ee04500896125360": {
+      "company": "Torm",
+      "source_document": "torm_2019.pdf"
+    },
+    "a8ae02bcd671b1d498ae3455cc79a790": {
+      "company": "Microsoft Corporation",
+      "source_document": "microsoft-corporation_2019.pdf"
+    },
+    "4260d68b6854a8c9d66df7ba5a0e1bcb": {
+      "company": "Siemens Ag",
+      "source_document": "siemens-ag_2019.pdf"
+    },
+    "ca7ce973e0b27c7278aa7b0b33a02862": {
+      "company": "Adtran Inc",
+      "source_document": "adtran-inc_2019.pdf"
+    },
+    "606d1a8372a33a0393e3aef7428516c6": {
+      "company": "Stmicroelectronics",
+      "source_document": "stmicroelectronics_2019.pdf"
+    },
+    "b9ca936307720f777c7a0400e769fac8": {
+      "company": "Activision Blizzard Inc",
+      "source_document": "activision-blizzard-inc_2019.pdf"
+    },
+    "a302e103c5f6f5d731e23e232959e726": {
+      "company": "Cisco Systems Inc",
+      "source_document": "cisco-systems-inc_2019.pdf"
+    },
+    "9a1188d2fbabb6aa7bc28d23766c3944": {
+      "company": "International Business Machines Corp",
+      "source_document": "international-business-machines-corp_2019.pdf"
+    },
+    "09989f33a70461774089eab8b7e99ec0": {
+      "company": "Siemens Ag",
+      "source_document": "siemens-ag_2019.pdf"
+    },
+    "0bcca5647e189ef585d83b8f37a36600": {
+      "company": "Cisco Systems Inc",
+      "source_document": "cisco-systems-inc_2019.pdf"
+    },
+    "9756395ea715fcdb1d395119de4ca969": {
+      "company": "Plexus Corp",
+      "source_document": "plexus-corp_2019.pdf"
+    },
+    "83407b01f04870dd3e1072d382adb2e7": {
+      "company": "A10 Networks Inc",
+      "source_document": "a10-networks-inc_2019.pdf"
+    },
+    "87474019e5efa030707dc811d82014d7": {
+      "company": "Iselect Ltd",
+      "source_document": "iselect-ltd_2019.pdf"
+    },
+    "9f855246e7c75672cf574ea121f9dcc4": {
+      "company": "Sealed Air Corporation",
+      "source_document": "sealed-air-corporation_2019.pdf"
+    },
+    "9808b3193fcb33eaa3a1244a6510c3fc": {
+      "company": "Stmicroelectronics",
+      "source_document": "stmicroelectronics_2019.pdf"
+    },
+    "be3bf6044a6f9f73147b3fe3b2b31058": {
+      "company": "Jabil Circuit Inc",
+      "source_document": "jabil-circuit-inc_2019.pdf"
+    },
+    "97c89347d9539386707ab00fe394a7c5": {
+      "company": "Cogeco Inc",
+      "source_document": "cogeco-inc_2019.pdf"
+    },
+    "edd74e2ec68d77916cc4ea51d1d45bc9": {
+      "company": "Kemet Corporation",
+      "source_document": "kemet-corporation_2019.pdf"
+    },
+    "5ed61bce0af5aa07ef2b07a81ab0b7f2": {
+      "company": "Activision Blizzard Inc",
+      "source_document": "activision-blizzard-inc_2019.pdf"
+    },
+    "b81cd1f81f08a801eb0c9e5d29a0a254": {
+      "company": "Intu Properties",
+      "source_document": "Intu-Properties_2019.pdf"
+    },
+    "55ddbb06d121c57fd6c541a5f8868bf9": {
+      "company": "Golar Lng Ltd",
+      "source_document": "golar-lng-ltd_2019.pdf"
+    },
+    "3a2929dc01fadc656c9f4e5f97d6f20b": {
+      "company": "Jabil Circuit Inc",
+      "source_document": "jabil-circuit-inc_2019.pdf"
+    },
+    "06c2ea54b95b1627e6dd1df9110d1866": {
+      "company": "Cogeco Inc",
+      "source_document": "cogeco-inc_2019.pdf"
+    },
+    "1ac71b0d438e9cf4a49a2da38162047a": {
+      "company": "Plexus Corp",
+      "source_document": "plexus-corp_2019.pdf"
+    },
+    "dce169153d5ce2fea3b77b61b862ab87": {
+      "company": "Cts Corporation",
+      "source_document": "cts-corporation_2019.pdf"
+    },
+    "981b66dd425b8f83ab7afbe5d3726dac": {
+      "company": "Golar Lng Ltd",
+      "source_document": "golar-lng-ltd_2019.pdf"
+    },
+    "43cd44e72550323841c683f65b8db47e": {
+      "company": "Black Knight Financial Services Inc",
+      "source_document": "black-knight-financial-services-inc_2019.pdf"
+    },
+    "dc8e987dafc31be452914a7c874e34fe": {
+      "company": "Microchip Technology Inc",
+      "source_document": "microchip-technology-inc_2019.pdf"
+    },
+    "31a2a1043d6d684b2e6b17a442989eff": {
+      "company": "Te Connectivity Ltd",
+      "source_document": "te-connectivity-ltd_2019.pdf"
+    },
+    "b31c0691d946f2fd9213342df5095190": {
+      "company": "Hc2 Holdings Inc",
+      "source_document": "hc2-holdings-inc_2019.pdf"
+    },
+    "3c6a0f2b0dd7fdebe7e3058c89e2c8fb": {
+      "company": "Golar Lng Ltd",
+      "source_document": "golar-lng-ltd_2019.pdf"
+    },
+    "bd9ede2f4b229722073869d8e2c11c53": {
+      "company": "Stmicroelectronics",
+      "source_document": "stmicroelectronics_2019.pdf"
+    },
+    "32b411d29cc0b004c263c7ce44490396": {
+      "company": "Plexus Corp",
+      "source_document": "plexus-corp_2019.pdf"
+    },
+    "41cd0d70ae65f119b4a082c6941cae9e": {
+      "company": "International Business Machines Corp",
+      "source_document": "international-business-machines-corp_2019.pdf"
+    },
+    "b3694fc8dd75c07e3366cd526ba4320c": {
+      "company": "A10 Networks Inc",
+      "source_document": "a10-networks-inc_2019.pdf"
+    },
+    "80fe98aa8c7e561b64b7651f4f1ec95e": {
+      "company": "Kemet Corporation",
+      "source_document": "kemet-corporation_2019.pdf"
+    },
+    "3afabad4399e88dbbeecaa660101f056": {
+      "company": "Sykes Enterprises Incorporated",
+      "source_document": "sykes-enterprises-incorporated_2019.pdf"
+    },
+    "804f29c81d3a7446d25dc65fae9dcc24": {
+      "company": "Atlassian Corporation Plc",
+      "source_document": "atlassian-corp-plc_2019.pdf"
+    },
+    "f9f3d0f6842cd6cf61870c10a06456ed": {
+      "company": "Advanced Energy",
+      "source_document": "advanced-energy_2019.pdf"
+    },
+    "66c66465699d11f1459bf13890235cc7": {
+      "company": "Lam Research Corporation",
+      "source_document": "lam-research-corporation_2019.pdf"
+    },
+    "d82825dc611851d39f74ecf5a5749e32": {
+      "company": "Teekay Corporation",
+      "source_document": "teekay-corporation_2019.pdf"
+    },
+    "1a20c8888b6b0e556de565a9d0f635a3": {
+      "company": "Advanced Energy",
+      "source_document": "advanced-energy_2019.pdf"
+    },
+    "85931f5d862e7772eb4b60a7882f0786": {
+      "company": "Adtran Inc",
+      "source_document": "adtran-inc_2019.pdf"
+    },
+    "92d7dd03551bafbf2dbc5790c31cf50a": {
+      "company": "Microsoft Corporation",
+      "source_document": "microsoft-corporation_2019.pdf"
+    },
+    "91d1d9299d4ccad5e9111558015d33ef": {
+      "company": "Te Connectivity Ltd",
+      "source_document": "te-connectivity-ltd_2019.pdf"
+    },
+    "5de5ceda2cc727a082813a089d204d29": {
+      "company": "Microsoft Corporation",
+      "source_document": "microsoft-corporation_2019.pdf"
+    },
+    "a00e03726042b41ab0af788bf6da0691": {
+      "company": "Spirax Sarco Engineering Plc",
+      "source_document": "spirax-sarco-engineering-plc_2019.pdf"
+    },
+    "ebbbdeaac8df8b432fb634764bedfbab": {
+      "company": "Sealed Air Corporation",
+      "source_document": "sealed-air-corporation_2019.pdf"
+    },
+    "d85cfed4ff2c2a0c73bfca11365f7e5d": {
+      "company": "Cisco Systems Inc",
+      "source_document": "cisco-systems-inc_2019.pdf"
+    },
+    "9cde5b1d43bd6944d1f1948f22adea64": {
+      "company": "Cts Corporation",
+      "source_document": "cts-corporation_2019.pdf"
+    },
+    "bf4294e9851a12a123e22fa5f0ca9db2": {
+      "company": "CTS Corporation",
+      "source_document": "cts-corporation_2019.pdf"
+    },
+    "95772891385308ecfe196a8abac82dea": {
+      "company": "CTS Corporation",
+      "source_document": "cts-corporation_2019.pdf"
+    }
+  },
+  "company_to_docs": {
+    "jabil circuit inc": [
+      "1a515daaf9fc996cd339ed43969e562d",
+      "3a2929dc01fadc656c9f4e5f97d6f20b",
+      "51f82007ca487fa292709d7e5f6d4b3e",
+      "7b5a6d90c9055a3a2956eb9fd44a3238",
+      "be3bf6044a6f9f73147b3fe3b2b31058"
+    ],
+    "jabil": [
+      "1a515daaf9fc996cd339ed43969e562d",
+      "3a2929dc01fadc656c9f4e5f97d6f20b",
+      "51f82007ca487fa292709d7e5f6d4b3e",
+      "7b5a6d90c9055a3a2956eb9fd44a3238",
+      "be3bf6044a6f9f73147b3fe3b2b31058"
+    ],
+    "black knight financial services inc": [
+      "0f425496cda5fd263664d2937a3045dc",
+      "43cd44e72550323841c683f65b8db47e",
+      "49a7b40ebd9e70c6dd2a9d0e568df0d3"
+    ],
+    "black": [
+      "0f425496cda5fd263664d2937a3045dc",
+      "43cd44e72550323841c683f65b8db47e",
+      "49a7b40ebd9e70c6dd2a9d0e568df0d3"
+    ],
+    "atlassian corp plc": [
+      "804f29c81d3a7446d25dc65fae9dcc24",
+      "ad41cd9a9d25c3a1583098c1d3cf7ac7"
+    ],
+    "atlassian": [
+      "804f29c81d3a7446d25dc65fae9dcc24",
+      "ad41cd9a9d25c3a1583098c1d3cf7ac7"
+    ],
+    "sealed air corporation": [
+      "50e9d6ef41f791b06f41ab77bdb5b5c0",
+      "9f855246e7c75672cf574ea121f9dcc4",
+      "ebbbdeaac8df8b432fb634764bedfbab"
+    ],
+    "sealed": [
+      "50e9d6ef41f791b06f41ab77bdb5b5c0",
+      "9f855246e7c75672cf574ea121f9dcc4",
+      "ebbbdeaac8df8b432fb634764bedfbab"
+    ],
+    "sykes enterprises incorporated": [
+      "3afabad4399e88dbbeecaa660101f056",
+      "637dc1556be88dcf37aa11a02a033462",
+      "80cb9e7eb6ede27b8be716c8516f21c0"
+    ],
+    "sykes": [
+      "3afabad4399e88dbbeecaa660101f056",
+      "637dc1556be88dcf37aa11a02a033462",
+      "80cb9e7eb6ede27b8be716c8516f21c0"
+    ],
+    "spirent communications plc": [
+      "0fc97e08495268a69faf7665c1b5e8ff",
+      "33b72850f302cf592bd0b18274d67c47",
+      "b22065d3443d21d0c703c37a214ce04f"
+    ],
+    "spirent": [
+      "0fc97e08495268a69faf7665c1b5e8ff",
+      "33b72850f302cf592bd0b18274d67c47",
+      "b22065d3443d21d0c703c37a214ce04f"
+    ],
+    "activision blizzard inc": [
+      "5ed61bce0af5aa07ef2b07a81ab0b7f2",
+      "65229f9cd95c11408444f2411b3585f0",
+      "b9ca936307720f777c7a0400e769fac8",
+      "da525ea384ae32e00c70fa4440444832"
+    ],
+    "activision": [
+      "5ed61bce0af5aa07ef2b07a81ab0b7f2",
+      "65229f9cd95c11408444f2411b3585f0",
+      "b9ca936307720f777c7a0400e769fac8",
+      "da525ea384ae32e00c70fa4440444832"
+    ],
+    "intu properties": [
+      "aa4b1eb9239628f1a3c4f5b3a8854aab",
+      "b81cd1f81f08a801eb0c9e5d29a0a254"
+    ],
+    "intu": [
+      "aa4b1eb9239628f1a3c4f5b3a8854aab",
+      "b81cd1f81f08a801eb0c9e5d29a0a254"
+    ],
+    "spirax sarco engineering plc": [
+      "4a3f1946a31eeff078a60885d7994bf9",
+      "a00e03726042b41ab0af788bf6da0691",
+      "cf430eb29c1e40df538d3eb60448b02b"
+    ],
+    "spirax": [
+      "4a3f1946a31eeff078a60885d7994bf9",
+      "a00e03726042b41ab0af788bf6da0691",
+      "cf430eb29c1e40df538d3eb60448b02b"
+    ],
+    "cogeco inc": [
+      "06c2ea54b95b1627e6dd1df9110d1866",
+      "8304a00edf70ae092a8088b5bc145be3",
+      "97c89347d9539386707ab00fe394a7c5"
+    ],
+    "cogeco": [
+      "06c2ea54b95b1627e6dd1df9110d1866",
+      "8304a00edf70ae092a8088b5bc145be3",
+      "97c89347d9539386707ab00fe394a7c5"
+    ],
+    "advanced energy": [
+      "1a20c8888b6b0e556de565a9d0f635a3",
+      "7127cbe483ce13a909d870b85a94783c",
+      "dc0211b1a4cd879610f1800e3b740039",
+      "f9f3d0f6842cd6cf61870c10a06456ed"
+    ],
+    "advanced": [
+      "1a20c8888b6b0e556de565a9d0f635a3",
+      "7127cbe483ce13a909d870b85a94783c",
+      "dc0211b1a4cd879610f1800e3b740039",
+      "f9f3d0f6842cd6cf61870c10a06456ed"
+    ],
+    "microsoft corporation": [
+      "5de5ceda2cc727a082813a089d204d29",
+      "92d7dd03551bafbf2dbc5790c31cf50a",
+      "a8ae02bcd671b1d498ae3455cc79a790",
+      "b6032e4f78d6818baf1f655fe8b2ace5"
+    ],
+    "microsoft": [
+      "5de5ceda2cc727a082813a089d204d29",
+      "92d7dd03551bafbf2dbc5790c31cf50a",
+      "a8ae02bcd671b1d498ae3455cc79a790",
+      "b6032e4f78d6818baf1f655fe8b2ace5"
+    ],
+    "iselect ltd": [
+      "017b2a0f07f434d81bb05e9877d02d24",
+      "87474019e5efa030707dc811d82014d7"
+    ],
+    "iselect": [
+      "017b2a0f07f434d81bb05e9877d02d24",
+      "87474019e5efa030707dc811d82014d7"
+    ],
+    "a10 networks inc": [
+      "66fc388f09125d5fad06681bb94b07f7",
+      "83407b01f04870dd3e1072d382adb2e7",
+      "b3694fc8dd75c07e3366cd526ba4320c"
+    ],
+    "a10": [
+      "66fc388f09125d5fad06681bb94b07f7",
+      "83407b01f04870dd3e1072d382adb2e7",
+      "b3694fc8dd75c07e3366cd526ba4320c"
+    ],
+    "kemet corporation": [
+      "607806de4f0f7f8ebea64f70a5a38f67",
+      "80fe98aa8c7e561b64b7651f4f1ec95e",
+      "edd74e2ec68d77916cc4ea51d1d45bc9"
+    ],
+    "kemet": [
+      "607806de4f0f7f8ebea64f70a5a38f67",
+      "80fe98aa8c7e561b64b7651f4f1ec95e",
+      "edd74e2ec68d77916cc4ea51d1d45bc9"
+    ],
+    "cts corporation": [
+      "95772891385308ecfe196a8abac82dea",
+      "9cde5b1d43bd6944d1f1948f22adea64",
+      "a0b02c1ac8cb3ff4ab3e983adc795205",
+      "bf4294e9851a12a123e22fa5f0ca9db2",
+      "dce169153d5ce2fea3b77b61b862ab87"
+    ],
+    "cts": [
+      "95772891385308ecfe196a8abac82dea",
+      "9cde5b1d43bd6944d1f1948f22adea64",
+      "a0b02c1ac8cb3ff4ab3e983adc795205",
+      "bf4294e9851a12a123e22fa5f0ca9db2",
+      "dce169153d5ce2fea3b77b61b862ab87"
+    ],
+    "plexus corp": [
+      "1ac71b0d438e9cf4a49a2da38162047a",
+      "32b411d29cc0b004c263c7ce44490396",
+      "61ce8de2691e888f09491cfd10772986",
+      "9756395ea715fcdb1d395119de4ca969",
+      "c123d7f645eaedce33bcd3349787b01c"
+    ],
+    "plexus": [
+      "1ac71b0d438e9cf4a49a2da38162047a",
+      "32b411d29cc0b004c263c7ce44490396",
+      "61ce8de2691e888f09491cfd10772986",
+      "9756395ea715fcdb1d395119de4ca969",
+      "c123d7f645eaedce33bcd3349787b01c"
+    ],
+    "lam research corporation": [
+      "66c66465699d11f1459bf13890235cc7",
+      "9cdc7ba8f8e5576b0726a9d2cbc782e5"
+    ],
+    "lam": [
+      "66c66465699d11f1459bf13890235cc7",
+      "9cdc7ba8f8e5576b0726a9d2cbc782e5"
+    ],
+    "adtran inc": [
+      "7f26a71454cf644144359b4fd9b8d19c",
+      "85931f5d862e7772eb4b60a7882f0786",
+      "ca7ce973e0b27c7278aa7b0b33a02862"
+    ],
+    "adtran": [
+      "7f26a71454cf644144359b4fd9b8d19c",
+      "85931f5d862e7772eb4b60a7882f0786",
+      "ca7ce973e0b27c7278aa7b0b33a02862"
+    ],
+    "torm": [
+      "524559264a4e33b7ee04500896125360",
+      "b1655e48423b0bc73c94a64196daf5f6"
+    ],
+    "microchip technology inc": [
+      "298af79b7f27f672bbf2c5ad2d4e40e8",
+      "ab014b37efd7ba6a0d2553f3b55c21d2",
+      "dc8e987dafc31be452914a7c874e34fe"
+    ],
+    "microchip": [
+      "298af79b7f27f672bbf2c5ad2d4e40e8",
+      "ab014b37efd7ba6a0d2553f3b55c21d2",
+      "dc8e987dafc31be452914a7c874e34fe"
+    ],
+    "te connectivity ltd": [
+      "0007ac7b0bca04cb3936894a43fac19f",
+      "31a2a1043d6d684b2e6b17a442989eff",
+      "91d1d9299d4ccad5e9111558015d33ef"
+    ],
+    "teekay corporation": [
+      "b8f96345c149b8b0a58c4ab4d36abc05",
+      "d82825dc611851d39f74ecf5a5749e32",
+      "e3c41237a26126847f78cfbe50f90e87"
+    ],
+    "teekay": [
+      "b8f96345c149b8b0a58c4ab4d36abc05",
+      "d82825dc611851d39f74ecf5a5749e32",
+      "e3c41237a26126847f78cfbe50f90e87"
+    ],
+    "hc2 holdings inc": [
+      "063934b9e9aa7a62a74da8ea32e05533",
+      "b31c0691d946f2fd9213342df5095190"
+    ],
+    "hc2": [
+      "063934b9e9aa7a62a74da8ea32e05533",
+      "b31c0691d946f2fd9213342df5095190"
+    ],
+    "international business machines corp": [
+      "41cd0d70ae65f119b4a082c6941cae9e",
+      "560af8f8e7ae482dfe7a26354f5afa21",
+      "9a1188d2fbabb6aa7bc28d23766c3944"
+    ],
+    "international": [
+      "41cd0d70ae65f119b4a082c6941cae9e",
+      "560af8f8e7ae482dfe7a26354f5afa21",
+      "9a1188d2fbabb6aa7bc28d23766c3944"
+    ],
+    "siemens ag": [
+      "09989f33a70461774089eab8b7e99ec0",
+      "4260d68b6854a8c9d66df7ba5a0e1bcb"
+    ],
+    "siemens": [
+      "09989f33a70461774089eab8b7e99ec0",
+      "4260d68b6854a8c9d66df7ba5a0e1bcb"
+    ],
+    "stmicroelectronics": [
+      "606d1a8372a33a0393e3aef7428516c6",
+      "9808b3193fcb33eaa3a1244a6510c3fc",
+      "bd9ede2f4b229722073869d8e2c11c53"
+    ],
+    "cisco systems inc": [
+      "0bcca5647e189ef585d83b8f37a36600",
+      "a302e103c5f6f5d731e23e232959e726",
+      "d85cfed4ff2c2a0c73bfca11365f7e5d"
+    ],
+    "cisco": [
+      "0bcca5647e189ef585d83b8f37a36600",
+      "a302e103c5f6f5d731e23e232959e726",
+      "d85cfed4ff2c2a0c73bfca11365f7e5d"
+    ],
+    "golar lng ltd": [
+      "3c6a0f2b0dd7fdebe7e3058c89e2c8fb",
+      "55ddbb06d121c57fd6c541a5f8868bf9",
+      "981b66dd425b8f83ab7afbe5d3726dac"
+    ],
+    "golar": [
+      "3c6a0f2b0dd7fdebe7e3058c89e2c8fb",
+      "55ddbb06d121c57fd6c541a5f8868bf9",
+      "981b66dd425b8f83ab7afbe5d3726dac"
+    ],
+    "cts corp": [
+      "95772891385308ecfe196a8abac82dea",
+      "bf4294e9851a12a123e22fa5f0ca9db2"
+    ],
+    "jabil inc": [
+      "1a515daaf9fc996cd339ed43969e562d",
+      "51f82007ca487fa292709d7e5f6d4b3e",
+      "7b5a6d90c9055a3a2956eb9fd44a3238"
+    ],
+    "jabil circuit": [
+      "1a515daaf9fc996cd339ed43969e562d",
+      "51f82007ca487fa292709d7e5f6d4b3e",
+      "7b5a6d90c9055a3a2956eb9fd44a3238"
+    ],
+    "atlassian corp": [
+      "804f29c81d3a7446d25dc65fae9dcc24",
+      "ad41cd9a9d25c3a1583098c1d3cf7ac7"
+    ],
+    "atlassian corporation plc": [
+      "804f29c81d3a7446d25dc65fae9dcc24",
+      "ad41cd9a9d25c3a1583098c1d3cf7ac7"
+    ]
+  }
+}

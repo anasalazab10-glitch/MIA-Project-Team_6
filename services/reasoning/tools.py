@@ -87,13 +87,14 @@ def _adapt_raw_chunk(raw: Dict[str, Any], candidate_meta: Optional[Dict[str, Any
 
     content = raw.get("content", "")
     if isinstance(content, dict):
-        # Table content: flatten headers/rows into readable text
+        # Table content: format as markdown-style table lines for clear column/row alignment
         headers = content.get("headers", [])
         rows = content.get("rows", [])
-        lines = [", ".join(str(h) for h in headers)]
+        header_line = " | ".join(str(h).strip() for h in headers)
+        lines = [header_line]
         for row in rows:
-            lines.append(", ".join(str(cell) for cell in row))
-        text = "; ".join(lines)
+            lines.append(" | ".join(str(cell).strip() for cell in row))
+        text = "\n".join(lines)
     else:
         text = str(content)
 
@@ -147,15 +148,18 @@ def search_documents(
     document_id: Optional[str] = None,
     mock_mode: bool = False,
     trace_id: Optional[str] = None,
+    content_type: Optional[str] = None,
 ) -> List[RetrievedChunk]:
     """
     General-purpose corpus search. Calls retrieval-api's /search endpoint,
     which handles embedding + reranking internally and returns candidate chunks.
     """
     if not mock_mode:
-        payload: Dict[str, Any] = {"query": query}
+        payload: Dict[str, Any] = {"query": query,"top_k": top_k}
         if document_id:
             payload["metadata_filter"] = {"document_id": document_id}
+        if content_type:
+            payload["content_type"] = content_type
         if trace_id:
             payload["trace_id"] = trace_id
         try:
@@ -200,11 +204,13 @@ def search_tables(
     calls the same /search endpoint and filters the results down to
     table chunks client-side.
     """
-    all_chunks = search_documents(query, document_id=document_id, mock_mode=mock_mode)
-    table_chunks = [c for c in all_chunks if c.content_type == "table"]
-    # Fall back to all results if nothing was tagged as a table -
-    # better to hand the reasoner something than nothing.
-    return table_chunks if table_chunks else all_chunks
+    return search_documents(
+    query,
+    document_id=document_id,
+    top_k=top_k,
+    mock_mode=mock_mode,
+    content_type="table",
+    )
 
 
 def filter_documents(

@@ -15,20 +15,26 @@ the calculator tool, never be produced by the LLM from memory.
 """
 import json
 import os
-from typing import List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from groq import Groq
+from groq_client import chat_completion_with_retry, MODEL_NAME
 from pydantic import BaseModel, Field
 
 from state import AgentState
 from tools import calculate
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-
-MODEL_NAME = "openai/gpt-oss-20b"
+CATALOG_PATH = Path(__file__).resolve().parent / "document_catalog.json"
+_DOC_TO_META: Dict[str, Any] = {}
+if CATALOG_PATH.exists():
+    try:
+        with open(CATALOG_PATH, "r", encoding="utf-8") as f:
+            _DOC_TO_META = json.load(f).get("doc_to_meta", {})
+    except Exception:
+        pass
 
 class ReasoningResult(BaseModel):
-    extracted_values: List[str] = Field(
+    extracted_values: List[str | int | float] = Field(
         description="The raw value(s) pulled directly from the evidence text, e.g. ['3410', '3875']"
     )
     formula: Optional[str] = Field(
@@ -85,6 +91,7 @@ Rules:
 
 5. "WHY" AND "HOW" QUESTIONS
 - For "why" or "how" questions, extract the relevant causal explanation, reason, method, or explanatory statement.
+- Put that explanation directly into "extracted_values" as a string (e.g. ["because the company has not historically experienced a high rate of contract terminations"]), in addition to summarizing it in reasoning_summary.
 - Do NOT return an unrelated number merely because it appears nearby in the evidence.
 
 6. CALCULATED QUESTIONS
@@ -104,8 +111,9 @@ Rules:
   2019 value - 2018 value.
 - If the question asks for percentage change, use:
   (later value - earlier value) / earlier value * 100
-- If the question asks for a difference, use the appropriate later-minus-earlier or explicitly requested ordering.
-- If the question asks for a sum, average, ratio, margin, or another derived result, use only the values necessary for that calculation.
+- If the question asks for a difference or how far apart two numbers are, use:
+  abs(value1 - value2) or later - earlier as appropriate.
+- If the question asks for a sum, total over multiple years, average, ratio, or margin, use only the values necessary for that calculation.
 
 7. COMBINED METRICS
 - If the question asks for a metric that is explicitly presented as a combined row in a table, use that row directly.
@@ -140,6 +148,13 @@ Rules:
 - Briefly explain where the extracted values came from and how they correspond to the question.
 - For calculated questions, mention the relevant years/periods and metrics.
 - The summary must reflect the actual evidence and must not invent facts.
+
+11. UNITS AND SCALE NORMALIZATION
+- Financial reports frequently present numbers in different scales, e.g. "in thousands", "in millions", or exact dollars.
+- Always check table headers, column subtitles, and footnotes for the reporting scale (e.g. "$ in thousands", "$ in millions").
+- When calculating differences, totals, or averages across multiple companies or disparate tables:
+  - If both numbers share the same scale (e.g. both in thousands: 9447 and 314258), calculate directly: abs(9447-314258).
+  - If the numbers have mismatched scales (e.g. one in millions 321.1 and one in thousands 9447), convert to a common scale before writing the formula (e.g. 321.1 million = 321100 thousand).
 
 IMPORTANT EXAMPLE:
 
@@ -187,21 +202,36 @@ Do NOT assume:
 
 because the evidence does not support that assumption.
 
+12. NEGATIVE NUMBERS AND ACCOUNTING PARENTHESES
+- In financial statements and accounting tables, numbers enclosed in parentheses such as (2.5), (4.5), (15.7), or (1,234) represent NEGATIVE NUMBERS (-2.5, -4.5, -15.7, -1234).
+- When extracting values from financial tables, always convert parenthesized numbers to negative values (e.g. extract -2.5, not 2.5).
+- In arithmetic formulas, preserve negative signs (e.g. "(-2.5 + -4.5) / 2" or "334.1 - (-235.8)").
+
+13. COMPONENT SUMS FOR TOTALS
+- If the question asks for a "total" or "impact" across financial results/items and the evidence lists the individual components rather than an explicit pre-calculated total, extract all the relevant component numbers and sum them in the formula (e.g. "98.4 + 31.7 + 16.3 + 1.0").
+
 FINAL REQUIREMENT:
+- "reasoning_summary" MUST be very concise, at most 1 short sentence (under 25 words). Do not write explanations outside or long paragraphs.
 Return ONLY the JSON object.
 Do not return markdown.
 Do not return explanations outside the JSON.
 """
-def _build_evidence_text(chunks: List[dict]) -> str:
+def _build_evidence_text(chunks: List[Any], max_chunks: int = 6, max_chunk_chars: int = 1800) -> str:
     lines = []
-    for c in chunks:
+    for c in chunks[:max_chunks]:
         # chunks may be RetrievedChunk objects or plain dicts depending on caller
         doc_id = c.document_id if hasattr(c, "document_id") else c["document_id"]
         page = c.page if hasattr(c, "page") else c["page"]
         section = c.section if hasattr(c, "section") else c.get("section")
         text = c.text if hasattr(c, "text") else c["text"]
-        lines.append(f"- [{doc_id}, page {page}, {section}]: {text}")
-    return "\n".join(lines)
+
+        meta = _DOC_TO_META.get(doc_id, {})
+        company = meta.get("company", "")
+        company_tag = f"Company: {company} | " if company else ""
+
+        truncated_text = text[:max_chunk_chars] + ("..." if len(text) > max_chunk_chars else "")
+        lines.append(f"- [{company_tag}Doc: {doc_id}, page {page}, {section}]:\n{truncated_text}")
+    return "\n\n".join(lines)
 
 
 def reason_over_evidence(state: AgentState) -> AgentState:
@@ -218,8 +248,7 @@ def reason_over_evidence(state: AgentState) -> AgentState:
         f"EVIDENCE:\n{evidence_text}"
     )
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
+    response = chat_completion_with_retry(
         messages=[
             {"role": "system", "content": REASONER_SYSTEM_PROMPT},
             {"role": "user", "content": user_message},
@@ -233,18 +262,41 @@ def reason_over_evidence(state: AgentState) -> AgentState:
     try:
         parsed = json.loads(raw_output)
         result = ReasoningResult(**parsed)
-        print("[reasoner] extracted_values:", result.extracted_values)
-        print("[reasoner] formula:", result.formula)
-        print("[reasoner] reasoning_summary:", result.reasoning_summary)
-
     except Exception as exc:
-        print(f"[reasoner] Failed to parse LLM output. Error: {exc}")
-        print(f"[reasoner] Raw output was: {raw_output}")
-        state["extracted_values"] = []
-        state["formula"] = None
-        state["computed_value"] = None
-        state["reasoning_summary"] = "Failed to extract values from evidence."
-        return state
+        print(f"[reasoner] Failed to parse LLM output cleanly ({exc}), trying regex recovery...")
+        import re
+        extracted = []
+        formula = None
+        m_vals = re.search(r'"extracted_values"\s*:\s*(\[[^\]]*\])', raw_output)
+        if m_vals:
+            try:
+                extracted = json.loads(m_vals.group(1))
+            except Exception:
+                pass
+        m_form = re.search(r'"formula"\s*:\s*"([^"]+)"', raw_output)
+        if m_form:
+            formula = m_form.group(1)
+        m_sum = re.search(r'"reasoning_summary"\s*:\s*"([^"]+)"', raw_output)
+        summary = m_sum.group(1) if m_sum else "Extracted from evidence."
+
+        if extracted:
+            result = ReasoningResult(
+                extracted_values=extracted,
+                formula=formula,
+                reasoning_summary=summary,
+            )
+        else:
+            print(f"[reasoner] Failed to parse LLM output. Error: {exc}")
+            print(f"[reasoner] Raw output was: {raw_output}")
+            state["extracted_values"] = []
+            state["formula"] = None
+            state["computed_value"] = None
+            state["reasoning_summary"] = "Failed to extract values from evidence."
+            return state
+
+    print("[reasoner] extracted_values:", result.extracted_values)
+    print("[reasoner] formula:", result.formula)
+    print("[reasoner] reasoning_summary:", result.reasoning_summary)
 
     state["extracted_values"] = result.extracted_values
     state["formula"] = result.formula

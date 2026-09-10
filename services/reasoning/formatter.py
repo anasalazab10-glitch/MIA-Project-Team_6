@@ -70,10 +70,16 @@ def format_answer(state: AgentState) -> AgentState:
 
 def _format_direct(state: AgentState, evidence: list) -> DirectAnswer:
     extracted = state.get("extracted_values") or []
-    value = extracted[0] if extracted else state.get("computed_value")
+    value = None
+    if extracted:
+        value = extracted[0]
+    elif state.get("computed_value") is not None:
+        value = state.get("computed_value")
+    elif state.get("reasoning_summary"):
+        value = state.get("reasoning_summary")
 
     if value is None:
-        raise ValueError("No extracted_values or computed_value found for 'direct' answer.")
+        raise ValueError("No extracted_values, computed_value, or reasoning_summary found for 'direct' answer.")
 
     return DirectAnswer(
         evidence=evidence,
@@ -86,6 +92,19 @@ def _format_calculated(state: AgentState, evidence: list) -> CalculatedAnswer:
     formula = state.get("formula")
 
     if value is None or not formula:
+        extracted = state.get("extracted_values") or []
+        if extracted:
+            import re
+            clean_v = re.sub(r"[^\d.-]", "", str(extracted[0]))
+            if clean_v:
+                try:
+                    num_v = float(clean_v)
+                    return CalculatedAnswer(
+                        evidence=evidence,
+                        params=CalculatedParams(value=num_v, formula=str(num_v)),
+                    )
+                except Exception:
+                    pass
         raise ValueError("Missing computed_value or formula for 'calculated' answer.")
 
     return CalculatedAnswer(

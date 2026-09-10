@@ -10,34 +10,46 @@ decides:
 """
 import json
 import os
-from typing import List
+from typing import List, Optional
 
-from groq import Groq
-from pydantic import BaseModel, Field
-
+from groq_client import chat_completion_with_retry, MODEL_NAME
+from pydantic import BaseModel, Field, field_validator, model_validator
 from state import AgentState
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-
-MODEL_NAME = "openai/gpt-oss-20b"
-
 class SubQuery(BaseModel):
-    query: str = Field(description="A focused search query for one piece of information")
-    purpose: str = Field(description="Brief note on why this sub-query is needed")
+    query: str
+    purpose: str = "Search query"
+    entity: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_subquery(cls, v):
+        if isinstance(v, str):
+            return {"query": v, "purpose": "Search query"}
+        return v
 
 
 class ClassificationResult(BaseModel):
-    question_type: str = Field(
-        description="One of: direct, calculated, multi_span, insufficient_evidence"
-    )
-    search_type: str = Field(description="One of: text, table, hybrid")
-    is_cross_doc: bool = Field(
-        description="True if the question likely needs evidence from more than one document"
-    )
-    sub_queries: List[SubQuery] = Field(
-        default_factory=list,
-        description="Broken-down search queries. Empty list if the question is simple enough to search directly.",
-    )
+    question_type: str = "direct"
+    search_type: str = "hybrid"
+    is_cross_doc: bool = False
+    companies: List[str] = Field(default_factory=list)
+    sub_queries: List[SubQuery] = Field(default_factory=list)
+
+    @field_validator("search_type", mode="before")
+    @classmethod
+    def coerce_search_type(cls, v):
+        if not v or str(v).lower() not in ("text", "table", "hybrid"):
+            return "hybrid"
+        return str(v).lower()
+
+    @field_validator("question_type", mode="before")
+    @classmethod
+    def coerce_question_type(cls, v):
+        v = str(v).lower() if v else "direct"
+        if v not in ("direct", "calculated", "multi_span", "insufficient_evidence"):
+            return "direct"
+        return v
 
 
 CLASSIFIER_SYSTEM_PROMPT = """You are a question classifier for a financial document Q&A system.
@@ -48,40 +60,48 @@ Given a user's question about financial reports, classify it and respond with ON
   "question_type": "direct" | "calculated" | "multi_span" | "insufficient_evidence",
   "search_type": "text" | "table" | "hybrid",
   "is_cross_doc": true | false,
-  "sub_queries": [ { "query": "...", "purpose": "..." } ]
+  "companies": ["Company A", "Company B"],
+  "sub_queries": [ { "query": "...", "purpose": "...", "entity": "Company name if known" } ]
 }
 
 Rules for question_type:
-- "direct": asks for one single fact or value that can be directly found in the evidence.
+- "direct": asks for one single fact, value, reason, or narrative explanation that can be directly found in the evidence.
   Examples:
   - "What was the revenue in 2020?"
   - "What was the cost of revenue in 2018?"
+  - "Why does Company X expect to recognize deferred revenue?"
+  - "How was the fair value of RSUs calculated?"
 
-- "multi_span": asks for multiple facts or values that can be directly found in the evidence.
-  Use this when the question asks for values for multiple years, periods, categories, or entities,
-  even if those values are percentages, ratios, or other numeric values.
+- "multi_span": asks for multiple distinct facts or values to be listed/enumerated directly from the evidence without arithmetic.
+  Use this when the question asks to list values for multiple years/periods without summing or averaging them (e.g. "What were the revenues in 2017 and 2018 respectively?").
+  ALSO use "multi_span" when the question asks to enumerate, list, or identify every item,
+  component, category, segment, or element that belongs under a single label, heading, or
+  row grouping in the evidence.
   Examples:
   - "What were the respective revenue values in 2017 and 2018?"
   - "What are the respective proportion of cost of revenue as a percentage of revenue in 2017 and 2018?"
   - "What were the revenue and operating income?"
-  IMPORTANT: If the requested values already appear in the document and no arithmetic is required,
-  classify as "multi_span", NOT "calculated".
+  - "Which components did the company list under Due within one year?"
+  - "What are the components of Accrued and Other Current Liabilities?"
+  - "What are the geographic regions in which the Company operates?"
+  IMPORTANT: If the question asks for a "total" or "sum" or "average" over multiple years, classify as "calculated", NOT "multi_span".
 
 - "calculated": requires performing arithmetic using values from the evidence.
-  Use this ONLY when the question explicitly asks for a derived result such as:
-  - percentage change
-  - growth rate
-  - difference
-  - sum
-  - average
-  - ratio that must be calculated
-  - margin that must be calculated
+  Use this whenever the question asks for a derived numeric result such as:
+  - total or sum over multiple periods/years or across multiple categories/components (e.g. "What was total revenue...", "What was the total favourable impact...")
+  - average over multiple periods/years (e.g. "What was the average revenue over 2017 and 2018?")
+  - difference or distance between two numbers (e.g. "How far apart were the 2019 balances...", "What is the difference between...")
+  - percentage change or growth rate
+  - count of items meeting a threshold
+  - ratio or margin that must be calculated
+  IMPORTANT: Even if the question includes a secondary question like "Which page supports the answer?", if the primary question asks for a total, sum, average, or difference, classify as "calculated".
   Examples:
+  - "What was the total revenue between 2015 to 2019?"
+  - "What was the total favourable impact foreign currency translation had on certain of their consolidated financial results? Which page supports the answer?"
   - "What was the percentage change in revenue from 2017 to 2018?"
   - "What is the difference between revenue in 2017 and 2018?"
   - "What was the average revenue over 2017 and 2018?"
-  IMPORTANT: Merely asking for a percentage, proportion, ratio, or values from multiple years does NOT make a question "calculated".
-  If the percentage/proportion/ratio is already explicitly stated in the evidence, use "multi_span".
+  - "How far apart were the finished-goods balances reported by X and Y?"
 
 - "insufficient_evidence": DO NOT use this for normal financial questions just because
   you do not know the answer yourself. The classifier does not have access to the documents
@@ -90,12 +110,8 @@ Rules for question_type:
   malformed, or impossible to interpret as a financial-document question.
 
 IMPORTANT:
-- Never classify a normal, understandable financial question as "insufficient_evidence"
-  merely because you cannot answer it from the question alone.
-- Your job is to classify the TYPE of information being requested, not whether the
-  information exists in the documents.
-- If the question asks for a fact, explanation, reason, definition, or statement that
-  could reasonably appear in a financial report, classify it as "direct".
+- Never classify a normal, understandable financial question as "insufficient_evidence".
+- If the question asks for a reason, definition, explanation, or "why/how", classify it as "direct".
 - Evidence sufficiency will be determined later by the retrieval stage.
 """
 
@@ -107,14 +123,13 @@ def classify_question(state: AgentState) -> AgentState:
     """
     question = state["question"]
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
+    response = chat_completion_with_retry(
         messages=[
             {"role": "system", "content": CLASSIFIER_SYSTEM_PROMPT},
             {"role": "user", "content": question},
         ],
         response_format={"type": "json_object"},
-        temperature=0,  # deterministic classification, not creative
+        temperature=0,
     )
 
     raw_output = response.choices[0].message.content
@@ -138,6 +153,7 @@ def classify_question(state: AgentState) -> AgentState:
     state["search_type"] = result.search_type
     state["is_cross_doc"] = result.is_cross_doc
     state["sub_queries"] = [sq.model_dump() for sq in result.sub_queries]
+    state["companies"] = result.companies
     state["retry_count"] = 0  # initialize retry counter for the retriever node
 
     return state

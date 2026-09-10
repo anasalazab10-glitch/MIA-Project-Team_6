@@ -3,6 +3,7 @@ from langgraph.graph import StateGraph, START, END
 
 from state import AgentState
 from classifier import classify_question
+from resolver import resolve_documents
 from retriever import retrieve_evidence, should_retry, MAX_RETRIES
 from reasoner import reason_over_evidence
 from formatter import format_answer
@@ -28,7 +29,7 @@ def route_after_retrieval(state: AgentState) -> str:
     if status == "sufficient":
         return "reasoner"
 
-    if should_retry(state):
+    if should_retry(state) is True:
         return "retriever"  # loop back for another search attempt
 
     return "mark_insufficient"  # out of retries, give up honestly
@@ -39,6 +40,7 @@ def build_graph():
 
     # Register nodes
     workflow.add_node("classifier", classify_question)
+    workflow.add_node("resolver", resolve_documents)
     workflow.add_node("retriever", retrieve_evidence)
     workflow.add_node("reasoner", reason_over_evidence)
     workflow.add_node("formatter", format_answer)
@@ -46,7 +48,8 @@ def build_graph():
 
     # Entry point
     workflow.add_edge(START, "classifier")
-    workflow.add_edge("classifier", "retriever")
+    workflow.add_edge("classifier", "resolver")
+    workflow.add_edge("resolver", "retriever")
 
     # The real conditional branch: sufficient -> reasoner,
     # weak/insufficient + retries left -> retry, else -> give up

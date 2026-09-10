@@ -87,45 +87,68 @@ class VectorStore:
             points=points,
         )
 
-    def search(self,query_embedding,top_k: int = 30,document_id: str | None = None,):
+    def search(
+        self,
+        query_embedding,
+        top_k: int = 30,
+        document_id: str | None = None,
+	content_type: str | None = None,
+    ):
         """Search Qdrant for the most similar chunks."""
 
-        query_filter = None
-     
-        if document_id is not None:
-             query_filter = Filter(
-                 must=[
-                     FieldCondition(
-                         key="document_id",
-                         match=MatchValue(value=document_id),
-                     )
-                 ]
-             )
-     
-        results = self.client.query_points(
-             collection_name=self.collection_name,
-             query=query_embedding.tolist(),
-             limit=top_k,
-             query_filter=query_filter,
-         )
-     
-        return results.points
-    def get_all_chunks(self) -> list[Chunk]:
-        """Load all indexed chunks from Qdrant."""
+        must_conditions = []
 
-        points, _ = self.client.scroll(
-            collection_name=self.collection_name,
-            limit=1000,
-            with_payload=True,
-            with_vectors=False,
+        if document_id is not None:
+          must_conditions.append(
+          FieldCondition(
+          key="document_id",
+          match=MatchValue(value=document_id),
+           )
+         )
+
+        if content_type is not None:
+          must_conditions.append(
+          FieldCondition(
+          key="content_type",
+          match=MatchValue(value=content_type),
+           )
         )
 
-        chunks = []
+        query_filter = Filter(must=must_conditions) if must_conditions else None
 
-        for point in points:
-            if point.payload:
-                chunks.append(
-                    Chunk.model_validate(point.payload)
-                )
+        results = self.client.query_points(
+            collection_name=self.collection_name,
+            query=query_embedding.tolist(),
+            limit=top_k,
+            query_filter=query_filter,
+        )
+
+        return results.points
+
+    def get_all_chunks(self) -> list[Chunk]:
+        """Load all indexed chunks fromQdrant."""
+
+        chunks = []
+        offset = None
+
+        while True:
+            points, next_offset = self.client.scroll(
+                collection_name=self.collection_name,
+                limit=1000,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+
+            for point in points:
+                if point.payload:
+                    chunks.append(
+                        Chunk.model_validate(point.payload)
+                    )
+
+            if next_offset is None:
+                break
+
+            offset = next_offset
 
         return chunks

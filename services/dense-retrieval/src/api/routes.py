@@ -57,7 +57,7 @@ def search(request: RetrievalRequest):
         name="retrieval-pipeline",
         input={
             "query": request.query,
-            "final_top_k": 5,
+            "final_top_k": request.top_k,
             "metadata_filter": request.metadata_filter,
         },
     )
@@ -65,7 +65,7 @@ def search(request: RetrievalRequest):
     try:
         result = pipeline.retrieve(
             query=request.query,
-            final_top_k=5,
+            final_top_k=request.top_k,
             metadata_filter=request.metadata_filter,
         )
 

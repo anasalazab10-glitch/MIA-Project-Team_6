@@ -106,6 +106,7 @@ class RunBenchmarkRequest(BaseModel):
     # Option A support: ask orchestrator to return retrieval candidates used (if orchestrator supports it)
     debug: bool = False
     retrieval_k: int = Field(default=5, ge=1, le=100)
+    delay_seconds: float = Field(default=1.0, ge=0.0, le=60.0)
 
 
 class PerItemResult(BaseModel):

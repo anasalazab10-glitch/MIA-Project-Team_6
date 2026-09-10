@@ -165,6 +165,7 @@ class RetrievalPipeline:
         over_retrieve_k: int | None = None,
         final_top_k: int | None = None,
         metadata_filter: dict[str, Any] | None = None,
+	content_type: Any | None = None,
     ) -> RetrievalResponse:
         """Execute full pipeline: over-retrieve candidates and rerank down to top 5."""
         k_over = over_retrieve_k if over_retrieve_k is not None else self.over_retrieve_k
@@ -177,6 +178,7 @@ class RetrievalPipeline:
             bm25_top_k=k_over,
             dense_top_k=k_over,
             metadata_filter=metadata_filter,
+	    content_type=content_type,
         )
 
         # 2. Rerank down to final top 5 via Cross-Encoder

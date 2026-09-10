@@ -302,9 +302,9 @@ def run_benchmark(req: RunBenchmarkRequest) -> RunBenchmarkResponse:
         finally:
             if trace:
                 trace.update(output={"result": per.model_dump()})
-            _ = t0  # reserved for latency later
-
         results.append(per)
+        if req.delay_seconds > 0:
+            time.sleep(req.delay_seconds)
 
     avg_em = sum(ems) / len(ems) if ems else None
     avg_f1 = sum(f1s) / len(f1s) if f1s else None

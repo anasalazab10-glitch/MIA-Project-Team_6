@@ -20,7 +20,7 @@ class ServiceClients:
 
     async def start(self) -> None:
         if self._http_client is None or self._http_client.is_closed:
-            self._http_client = httpx.AsyncClient(timeout=60.0)
+            self._http_client = httpx.AsyncClient(timeout=120.0)
 
     async def close(self) -> None:
         if self._http_client and not self._http_client.is_closed:
@@ -29,7 +29,7 @@ class ServiceClients:
     @property
     def client(self) -> httpx.AsyncClient:
         if self._http_client is None or self._http_client.is_closed:
-            self._http_client = httpx.AsyncClient(timeout=60.0)
+            self._http_client = httpx.AsyncClient(timeout=120.0)
         return self._http_client
 
     # ------------------------------------------------------------------

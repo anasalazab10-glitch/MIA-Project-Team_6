@@ -15,8 +15,10 @@ class AgentState(TypedDict):
     # Classification & Routing
     question_type: Optional[Literal["direct", "calculated", "multi_span", "insufficient_evidence"]]
     is_cross_doc: bool
-    sub_queries: List[Dict[str, str]]
+    companies: Optional[List[str]]
+    sub_queries: List[Dict[str, Any]]
     search_type: Literal["text", "table", "hybrid"]
+    resolved_documents: Optional[Dict[str, List[str]]]
 
     # Retrieval Context & Evidence
     retrieved_chunks: Annotated[List[RetrievedChunk], operator.add]

@@ -178,6 +178,7 @@ class HybridRetriever:
         bm25_top_k: int = 30,
         dense_top_k: int = 30,
         metadata_filter: dict[str, Any] | None = None,
+        content_type: Any | None = None,
     ) -> RetrievalResponse:
         """Run hybrid retrieval: executes BM25 and Dense search, then fuses with RRF."""
         # 1. Lexical retrieval via BM25
@@ -185,12 +186,15 @@ class HybridRetriever:
             query=query,
             top_k=bm25_top_k,
             metadata_filter=metadata_filter,
+	   content_type=content_type,
         )
 
         # 2. Semantic vector retrieval via DenseRetriever (Qdrant)
         dense_response = self.dense_retriever.retrieve(
             query=query,
             top_k=dense_top_k,
+	   content_type=content_type,
+	  document_id=metadata_filter.get("document_id") if metadata_filter else None,
         )
         dense_candidates = dense_response.candidates
 

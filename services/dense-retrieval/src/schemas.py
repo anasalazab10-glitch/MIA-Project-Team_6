@@ -151,6 +151,7 @@ class Candidate(BaseModel):
 class RetrievalRequest(BaseModel):
     """Standard request payload for retrieval endpoints."""
     query: str
+    content_type: ContentType | None = None
     top_k: int = Field(default=5, ge=1, le=100)
     retrieval_method: RetrievalMethod = Field(
         default=RetrievalMethod.HYBRID
