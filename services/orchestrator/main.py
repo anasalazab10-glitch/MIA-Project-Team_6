@@ -38,6 +38,32 @@ logger = logging.getLogger("orchestrator")
 clients = ServiceClients()
 metadata_store = MetadataStore(data_dir=settings.data_dir)
 
+def _coerce_page_to_int(p: Any) -> Any:
+    if p is None:
+        return None
+    if isinstance(p, int):
+        return p
+    if isinstance(p, list) and p:
+        return _coerce_page_to_int(p[0])
+    if isinstance(p, str):
+        try:
+            return int(p)
+        except Exception:
+            return p
+    return p
+
+
+def _normalize_evidence(evidence: Any) -> list[dict]:
+    if not isinstance(evidence, list):
+        return []
+    out: list[dict] = []
+    for c in evidence:
+        if not isinstance(c, dict):
+            continue
+        c2 = dict(c)
+        c2["page"] = _coerce_page_to_int(c2.get("page"))
+        out.append(c2)
+    return out
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -124,9 +150,12 @@ async def run_query(request: RunRequest):
 
     # Normalize answer payload
     answer_type = raw_answer.get("answer_type", "insufficient_evidence")
-    evidence = raw_answer.get("evidence", [])
+    evidence = _normalize_evidence(raw_answer.get("evidence", []))
     params = raw_answer.get("params", {})
+    if not isinstance(params, dict):
+        params = {}
     retrieved_candidates = raw_answer.get("retrieved_candidates", [])
+
 
     validation_payload = {
         "answer_type": answer_type,

@@ -51,6 +51,8 @@ def validate_answer(payload: Dict[str, Any]) -> Tuple[bool, str]:
             return False, f"evidence[{i}] missing 'document_id'"
         if cite.get("page") is None:
             return False, f"evidence[{i}] missing 'page'"
+        if not isinstance(cite.get("page"), int):
+            return False, f"evidence[{i}].page must be an integer"
 
     # 4. Check params field exists
     params = payload.get("params")

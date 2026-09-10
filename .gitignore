@@ -27,3 +27,8 @@ ENV/
 TAT-DQA/
 data/tatdqa/*.zip
 batches/*/batch_*_done.txt
+
+# Local datasets / artifacts
+data/
+tatdqa_docs_test.zip
+tatdqa_docs_train.zip
