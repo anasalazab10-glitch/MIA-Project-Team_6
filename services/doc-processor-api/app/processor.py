@@ -82,27 +82,72 @@ def extract_text(res_field: Any) -> str:
     return clean_text(res_field)
 
 
-def _expand_colspan(cell) -> list[str]:
-    text = clean_text(cell.text_content())
-    colspan = cell.get("colspan")
+def _int_attr(cell, name: str) -> int:
+    raw = cell.get(name)
     try:
-        n = int(colspan) if colspan else 1
+        n = int(raw) if raw else 1
     except ValueError:
         n = 1
-    return [text] * max(n, 1)
+    return max(n, 1)
 
 
-def _tr_to_cells(tr) -> list[str]:
-    cells = tr.xpath("./th|./td")
-    out: list[str] = []
-    for c in cells:
-        out.extend(_expand_colspan(c))
-    return out
+def _rows_to_grid(trs: list[Any]) -> list[list[str]]:
+    """
+    Turns a list of <tr> elements into a rectangular grid of strings,
+    correctly honoring BOTH colspan and rowspan. A rowspan cell is
+    "remembered" in `pending` and re-emitted into the same column index
+    on the following rows until it's exhausted, so row labels/values
+    never silently shift left the way a colspan-only implementation
+    would cause.
+    """
+    grid: list[list[str]] = []
+    # col_index -> (text, rows_remaining)
+    pending: dict[int, tuple[str, int]] = {}
+
+    for tr in trs:
+        row: list[str] = []
+        col = 0
+        cells = iter(tr.xpath("./th|./td"))
+        cell = next(cells, None)
+
+        while cell is not None or col in pending:
+            if col in pending:
+                text, remaining = pending[col]
+                row.append(text)
+                pending[col] = (text, remaining - 1) if remaining > 1 else None
+                if pending[col] is None:
+                    del pending[col]
+                col += 1
+                continue
+
+            text = clean_text(cell.text_content())
+            colspan = _int_attr(cell, "colspan")
+            rowspan = _int_attr(cell, "rowspan")
+
+            for _ in range(colspan):
+                row.append(text)
+                if rowspan > 1:
+                    pending[col] = (text, rowspan - 1)
+                col += 1
+
+            cell = next(cells, None)
+
+        grid.append(row)
+
+    max_cols = max((len(r) for r in grid), default=0)
+    for r in grid:
+        if len(r) < max_cols:
+            r.extend([""] * (max_cols - len(r)))
+
+    return grid
 
 
 def html_table_to_content(table_html: str) -> TableContent:
+    if not table_html or not table_html.strip():
+        return TableContent(headers=[], rows=[])
+
     root = lxml_html.fromstring(table_html)
-    table_nodes = root.xpath(".//table")
+    table_nodes = root.xpath("descendant-or-self::table")
     if not table_nodes:
         return TableContent(headers=[], rows=[])
 
@@ -112,12 +157,12 @@ def html_table_to_content(table_html: str) -> TableContent:
     tbody_trs = table.xpath(".//tbody//tr")
     all_trs = table.xpath(".//tr")
 
-    header_rows = [_tr_to_cells(tr) for tr in thead_trs] if thead_trs else []
-    body_rows = [_tr_to_cells(tr) for tr in tbody_trs] if tbody_trs else []
+    header_rows = _rows_to_grid(thead_trs) if thead_trs else []
+    body_rows = _rows_to_grid(tbody_trs) if tbody_trs else []
 
     if not body_rows and all_trs:
         start = len(thead_trs) if thead_trs else 0
-        body_rows = [_tr_to_cells(tr) for tr in all_trs[start:]]
+        body_rows = _rows_to_grid(all_trs[start:])
 
     if header_rows:
         max_cols = max(len(r) for r in header_rows)
@@ -147,6 +192,40 @@ def html_table_to_content(table_html: str) -> TableContent:
         norm_rows.append(r)
 
     return TableContent(headers=[clean_text(h) for h in headers], rows=norm_rows)
+
+
+def table_to_row_facts(table: TableContent, section: str | None = None) -> list[str]:
+    """
+    Serializes a table into one self-contained sentence per non-empty cell,
+    This keeps the row-label <-> column-header <-> value relationship
+    explicit even after the table leaves this service, so a downstream
+    retriever/embedder doesn't have to reconstruct alignment from position.
+    Assumes the first column of each row is the row label (true for the
+    vast majority of financial statement tables coming out of PPStructure).
+    """
+    if not table.rows:
+        return []
+
+    facts: list[str] = []
+    prefix = f"{section}. " if section else ""
+
+    for row in table.rows:
+        if not row:
+            continue
+        row_label = row[0].strip()
+        for col_idx in range(1, len(row)):
+            value = row[col_idx].strip()
+            if not value:
+                continue
+            col_header = table.headers[col_idx].strip() if col_idx < len(table.headers) else ""
+            if row_label and col_header:
+                facts.append(f"{prefix}{row_label} ({col_header}): {value}")
+            elif row_label:
+                facts.append(f"{prefix}{row_label}: {value}")
+            else:
+                facts.append(f"{prefix}{col_header}: {value}")
+
+    return facts
 
 
 def page_ocr_to_text(ocr_result: Any) -> str:
@@ -240,6 +319,7 @@ class DocProcessor:
                 median_text_h = text_heights[len(text_heights)//2] if text_heights else 0.0
 
                 current_section: str | None = None
+                current_section_chunk_id: str | None = None
 
                 for bi, b in enumerate(blocks):
                     btype = b.get("type")
@@ -267,32 +347,41 @@ class DocProcessor:
                             content_type = ContentType.HEADING
                             heading_promoted = True
 
+                    chunk_id = f"{doc_id}_p{page_num}_b{bi}"
+
                     if content_type == ContentType.HEADING:
                         if isinstance(content, str) and content.strip():
                             current_section = content.strip()
+                            current_section_chunk_id = chunk_id
                         section = current_section
                     else:
                         section = current_section
 
+                    element_metadata: dict[str, Any] = {
+                        "source": "paddleocr_ppstructure",
+                        "block_type": btype,
+                        "bbox_unit": "normalized",
+                        "render_dpi": dpi,
+                        "requested_dpi": requested_dpi,
+                        "dpi_capped": dpi != requested_dpi,
+                        "page_image_size": [w, h],
+                        "heading_promoted": heading_promoted,
+                        "section_anchor_chunk_id": current_section_chunk_id,
+                    }
+
+                    if content_type == ContentType.TABLE and isinstance(content, TableContent):
+                        element_metadata["table_row_facts"] = table_to_row_facts(content, section)
+
                     all_elements.append(
                         Element(
-                            chunk_id=f"{doc_id}_p{page_num}_b{bi}",
+                            chunk_id=chunk_id,
                             document_id=doc_id,
                             page=[page_num],
                             section=section,
                             content_type=content_type,
                             content=content,
                             bbox=bbox_norm,
-                            metadata={
-                                "source": "paddleocr_ppstructure",
-                                "block_type": btype,
-                                "bbox_unit": "normalized",
-                                "render_dpi": dpi,
-                                "requested_dpi": requested_dpi,
-                                "dpi_capped": dpi != requested_dpi,
-                                "page_image_size": [w, h],
-                                "heading_promoted": heading_promoted,
-                            },
+                            metadata=element_metadata,
                         )
                     )
 
