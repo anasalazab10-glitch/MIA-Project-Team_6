@@ -42,55 +42,48 @@ def chat_completion_with_retry(
 
         except Exception as exc:
             err_str = str(exc).lower()
-            is_daily_limit = "tokens per day" in err_str or "tpd" in err_str
             is_rate_limit = any(
                 term in err_str
-                for term in ["429", "rate limit", "tpm", "tokens per minute", "413"]
+                for term in ["429", "rate limit", "tpm", "tokens per minute", "tpd", "tokens per day", "rpm", "413"]
             )
-            is_json_err = "json_validate_failed" in err_str or "failed to validate json" in err_str
-
-            if is_daily_limit and attempt < max_retries:
-                # Do not sleep for hours if daily limit is reached on one model: switch immediately
-                alt_model = "qwen/qwen3.8-27b" if "qwen3.8" not in target_model else "openai/gpt-oss-120b"
-                logger.warning(f"[Groq Daily Limit] Switching from {target_model} to {alt_model}...")
-                print(f"[Groq Daily Limit] Switching to {alt_model}...")
-                target_model = alt_model
-                time.sleep(1.0)
-                continue
-
-            if is_json_err and response_format is not None:
-                # Retry once without response_format, letting prompt handle JSON instruction
-                logger.warning(f"[Groq JSON Fallback] Retrying {target_model} without strict response_format...")
-                try:
-                    kwargs_no_rf = {
-                        "model": target_model,
-                        "messages": messages,
-                        "temperature": temperature,
-                        "max_tokens": max_tokens,
-                    }
-                    return client.chat.completions.create(**kwargs_no_rf)
-                except Exception:
-                    pass
 
             if is_rate_limit and attempt < max_retries:
-                wait_time = backoff
-                match = re.search(r"try again in ([\d\.]+)s", str(exc), re.IGNORECASE)
+                match = re.search(r"try again in (?:(\d+)m)?([\d\.]+)s", str(exc), re.IGNORECASE)
                 if match:
-                    wait_time = max(wait_time, float(match.group(1)) + 0.5)
+                    mins = float(match.group(1)) if match.group(1) else 0.0
+                    secs = float(match.group(2))
+                    wait_time = mins * 60 + secs + 1.0
                 else:
                     wait_time = backoff * (2 ** (attempt - 1))
 
-                logger.warning(
-                    f"[Groq Retry] Rate limited on {target_model} (attempt {attempt}/{max_retries}). "
-                    f"Backing off for {wait_time:.2f}s... Error: {exc}"
-                )
-                print(f"[Groq Retry] Rate limit hit. Backing off for {wait_time:.2f}s...")
-                time.sleep(wait_time)
-            elif attempt < max_retries and not is_rate_limit:
-                # If model is failing with 400 or transient error, try qwen3.8-27b as fallback
-                if target_model != "qwen/qwen3.8-27b":
-                    logger.warning(f"[Groq Fallback] Switching from {target_model} to qwen/qwen3.8-27b...")
-                    target_model = "qwen/qwen3.8-27b"
+                # If wait time is reasonable (up to 120s), wait for the rolling quota reset
+                if wait_time <= 120.0:
+                    logger.warning(
+                        f"[Groq Retry] Rate limit on {target_model} (attempt {attempt}/{max_retries}). "
+                        f"Sleeping {wait_time:.1f}s for quota reset..."
+                    )
+                    print(f"[Groq Retry] Rate limit on {target_model}. Sleeping {wait_time:.1f}s...")
+                    time.sleep(wait_time)
+                    continue
+
+                # If wait time is longer, rotate models
+                models_chain = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b"]
+                try:
+                    curr_idx = models_chain.index(target_model)
+                    alt_model = models_chain[(curr_idx + 1) % len(models_chain)]
+                except ValueError:
+                    alt_model = models_chain[0]
+
+                if "120b" in alt_model and max_tokens < 800:
+                    max_tokens = 800
+
+                logger.warning(f"[Groq Fallback] Switching from {target_model} to {alt_model}...")
+                print(f"[Groq Fallback] Switching to {alt_model}...")
+                target_model = alt_model
+                time.sleep(2.0)
+                continue
+
+            elif attempt < max_retries:
                 time.sleep(1.0)
             else:
                 logger.error(f"[Groq Error] Final failure after {attempt} attempts: {exc}")

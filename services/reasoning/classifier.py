@@ -53,9 +53,7 @@ class ClassificationResult(BaseModel):
 
 
 CLASSIFIER_SYSTEM_PROMPT = """You are a question classifier for a financial document Q&A system.
-
-Given a user's question about financial reports, classify it and respond with ONLY valid JSON matching this exact schema:
-
+Respond with ONLY valid JSON matching this exact schema:
 {
   "question_type": "direct" | "calculated" | "multi_span" | "insufficient_evidence",
   "search_type": "text" | "table" | "hybrid",
@@ -65,54 +63,12 @@ Given a user's question about financial reports, classify it and respond with ON
 }
 
 Rules for question_type:
-- "direct": asks for one single fact, value, reason, or narrative explanation that can be directly found in the evidence.
-  Examples:
-  - "What was the revenue in 2020?"
-  - "What was the cost of revenue in 2018?"
-  - "Why does Company X expect to recognize deferred revenue?"
-  - "How was the fair value of RSUs calculated?"
+- "direct": Asks for one single fact, metric, date, reason, definition, or explanation (e.g. "Why does X...", "What was revenue in 2020").
+- "multi_span": Enumerate or list multiple distinct items, segments, components, or values for multiple periods without summing/averaging.
+- "calculated": Requires arithmetic (total/sum over multiple periods or components, average, difference/distance, percentage change, ratio). E.g. "How far apart...", "average revenue", "total favourable impact".
+- "insufficient_evidence": Never use for normal financial questions.
 
-- "multi_span": asks for multiple distinct facts or values to be listed/enumerated directly from the evidence without arithmetic.
-  Use this when the question asks to list values for multiple years/periods without summing or averaging them (e.g. "What were the revenues in 2017 and 2018 respectively?").
-  ALSO use "multi_span" when the question asks to enumerate, list, or identify every item,
-  component, category, segment, or element that belongs under a single label, heading, or
-  row grouping in the evidence.
-  Examples:
-  - "What were the respective revenue values in 2017 and 2018?"
-  - "What are the respective proportion of cost of revenue as a percentage of revenue in 2017 and 2018?"
-  - "What were the revenue and operating income?"
-  - "Which components did the company list under Due within one year?"
-  - "What are the components of Accrued and Other Current Liabilities?"
-  - "What are the geographic regions in which the Company operates?"
-  IMPORTANT: If the question asks for a "total" or "sum" or "average" over multiple years, classify as "calculated", NOT "multi_span".
-
-- "calculated": requires performing arithmetic using values from the evidence.
-  Use this whenever the question asks for a derived numeric result such as:
-  - total or sum over multiple periods/years or across multiple categories/components (e.g. "What was total revenue...", "What was the total favourable impact...")
-  - average over multiple periods/years (e.g. "What was the average revenue over 2017 and 2018?")
-  - difference or distance between two numbers (e.g. "How far apart were the 2019 balances...", "What is the difference between...")
-  - percentage change or growth rate
-  - count of items meeting a threshold
-  - ratio or margin that must be calculated
-  IMPORTANT: Even if the question includes a secondary question like "Which page supports the answer?", if the primary question asks for a total, sum, average, or difference, classify as "calculated".
-  Examples:
-  - "What was the total revenue between 2015 to 2019?"
-  - "What was the total favourable impact foreign currency translation had on certain of their consolidated financial results? Which page supports the answer?"
-  - "What was the percentage change in revenue from 2017 to 2018?"
-  - "What is the difference between revenue in 2017 and 2018?"
-  - "What was the average revenue over 2017 and 2018?"
-  - "How far apart were the finished-goods balances reported by X and Y?"
-
-- "insufficient_evidence": DO NOT use this for normal financial questions just because
-  you do not know the answer yourself. The classifier does not have access to the documents
-  or retrieved evidence, so it cannot determine whether evidence is sufficient.
-  Use "insufficient_evidence" ONLY if the question itself is genuinely nonsensical,
-  malformed, or impossible to interpret as a financial-document question.
-
-IMPORTANT:
-- Never classify a normal, understandable financial question as "insufficient_evidence".
-- If the question asks for a reason, definition, explanation, or "why/how", classify it as "direct".
-- Evidence sufficiency will be determined later by the retrieval stage.
+sub_queries: If the question mentions multiple companies or cross-document comparisons, create one sub_query per company with entity set to that company's name.
 """
 
 
@@ -129,6 +85,7 @@ def classify_question(state: AgentState) -> AgentState:
             {"role": "user", "content": question},
         ],
         response_format={"type": "json_object"},
+        max_tokens=250,
         temperature=0,
     )
 

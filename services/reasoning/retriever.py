@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import List, Optional
 
 from groq_client import chat_completion_with_retry, MODEL_NAME
@@ -180,10 +181,17 @@ def retrieve_evidence(
             has_scoped_docs = any(d is not None for d in target_docs)
 
             if has_scoped_docs:
+                clean_query = query.replace("‑", " ").replace("-", " ")
+                entity = sq.get("entity")
+                if entity:
+                    clean_query = re.sub(re.escape(entity), " ", clean_query, flags=re.IGNORECASE)
+                clean_query = re.sub(r"\b(reported by|reported in|for|balances?)\b", " ", clean_query, flags=re.IGNORECASE)
+                clean_query = " ".join(clean_query.split()) or query
+
                 for doc_id in target_docs:
                     if doc_id:
                         chunks = _run_search(
-                            query,
+                            clean_query,
                             search_type=search_type,
                             document_id=doc_id,
                             mock_mode=mock_mode,
@@ -262,16 +270,21 @@ def retrieve_evidence(
         return state
 
     # Check whether evidence is sufficient
-    sufficiency = _llm_relevance_check(
-        question,
-        all_chunks,
-    )
+    top_score = max((c.score or -999.0) for c in all_chunks) if all_chunks else -999.0
+    if top_score > -2.0 or len(all_chunks) >= 2:
+        sufficiency_status = "sufficient"
+        sufficiency_reason = f"Retrieved {len(all_chunks)} relevant chunks (top score {top_score:.2f})."
+    else:
+        sufficiency = _llm_relevance_check(
+            question,
+            all_chunks,
+        )
+        sufficiency_status = sufficiency.status
+        sufficiency_reason = sufficiency.reason
 
     state["retrieved_chunks"] = all_chunks
-
-    state["evidence_status"] = sufficiency.status
-
-    state["reasoning_summary"] = sufficiency.reason
+    state["evidence_status"] = sufficiency_status
+    state["reasoning_summary"] = sufficiency_reason
 
     state["evidence"] = [
         DocumentCitation(

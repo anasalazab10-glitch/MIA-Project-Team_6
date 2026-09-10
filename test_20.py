@@ -14,7 +14,7 @@ import time
 
 ORCHESTRATOR_URL = os.environ.get("ORCHESTRATOR_URL", "http://localhost:8003/run")
 BENCHMARK_FILE = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("BENCHMARK_FILE", "benchmark_100_raw.json")
-NUM_QUESTIONS = 5
+NUM_QUESTIONS = int(os.environ.get("NUM_QUESTIONS", 10))
 
 
 def normalize(val):

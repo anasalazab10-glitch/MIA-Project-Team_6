@@ -1,16 +1,35 @@
+import re
 from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class DocumentCitation(BaseModel):
     document_id: str
-    page: List[int]  # matches team-wide convention: multi-page chunks preserved as a list
+    page: Union[int, List[int]] = [1]
     section: Optional[str] = "General"
+
+    @field_validator("page", mode="before")
+    @classmethod
+    def coerce_page(cls, v):
+        if isinstance(v, int):
+            return [v]
+        if isinstance(v, list):
+            res = []
+            for x in v:
+                try:
+                    res.append(int(x))
+                except (ValueError, TypeError):
+                    pass
+            return res if res else [1]
+        if isinstance(v, str):
+            digits = re.findall(r"\d+", v)
+            return [int(d) for d in digits] if digits else [1]
+        return [1]
 
 
 class RetrievedChunk(BaseModel):
     document_id: str
-    page: List[int]  # matches team-wide convention
+    page: Union[int, List[int]] = [1]
     section: Optional[str] = "General"
     content_type: str
     text: str
@@ -19,6 +38,24 @@ class RetrievedChunk(BaseModel):
     rank: Optional[int] = None
     retrieval_method: Optional[str] = None
     scores: Optional[Dict[str, float]] = None
+
+    @field_validator("page", mode="before")
+    @classmethod
+    def coerce_page(cls, v):
+        if isinstance(v, int):
+            return [v]
+        if isinstance(v, list):
+            res = []
+            for x in v:
+                try:
+                    res.append(int(x))
+                except (ValueError, TypeError):
+                    pass
+            return res if res else [1]
+        if isinstance(v, str):
+            digits = re.findall(r"\d+", v)
+            return [int(d) for d in digits] if digits else [1]
+        return [1]
 
 
 # 1. Direct Schema
