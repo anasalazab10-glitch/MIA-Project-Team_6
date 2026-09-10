@@ -100,13 +100,20 @@ class ServiceClients:
         self,
         document_id: str,
         elements: List[Dict[str, Any]],
+        source_document: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Sends processed elements to retrieval-api for chunking & indexing.
         If retrieval-api exposes /index, it forwards them. Otherwise, logs a note.
+
+        source_document: the original filename (e.g. "a10-networks-inc_2019.pdf"),
+        used by retrieval-api to tag every chunk with a human-readable document
+        identity so near-duplicate boilerplate across filers stays distinguishable.
         """
         url = f"{settings.retrieval_url}/index"
         payload = {"document_id": document_id, "elements": elements}
+        if source_document:
+            payload["source_document"] = source_document
 
         try:
             res = await self.client.post(

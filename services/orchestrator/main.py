@@ -273,7 +273,11 @@ async def ingest_document(
     elements = proc_result.get("elements", [])
 
     # Index into retrieval service
-    index_res = await clients.index_elements(document_id=doc_id, elements=elements)
+    index_res = await clients.index_elements(
+        document_id=doc_id,
+        elements=elements,
+        source_document=file.filename,
+    )
     logger.info(f"[Ingest] Retrieval indexing result for '{doc_id}': {index_res}")
 
     # Register in metadata store

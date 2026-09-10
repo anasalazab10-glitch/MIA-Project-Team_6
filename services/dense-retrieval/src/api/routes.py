@@ -109,6 +109,9 @@ def index(request: IndexRequest):
     for el in request.elements:
         if "document_id" not in el:
             el["document_id"] = doc_id
+        if request.source_document:
+            el.setdefault("metadata", {})
+            el["metadata"]["source_document"] = request.source_document
 
     try:
         # Chunking + embeddings + Qdrant

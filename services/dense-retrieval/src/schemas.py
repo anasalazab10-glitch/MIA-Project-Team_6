@@ -104,11 +104,22 @@ class Chunk(BaseModel):
 
         Crucial for BM25 tokenizers and Cross-Encoders, which require string
         inputs regardless of whether the chunk is prose or a structured table.
-        """
-        if isinstance(self.content, TableContent):
-            return self.content.to_text()
 
-        return str(self.content)
+        Prefixed with the source document identity (company/filing name when
+        known, else the raw document_id) so that near-identical boilerplate
+        chunks from different filers remain lexically/semantically
+        distinguishable during BM25 indexing, dense embedding, and
+        cross-encoder reranking. Without this, tables that share a common
+        filing template (e.g. "Selected Financial Data") are indistinguishable
+        across companies.
+        """
+        doc_label = self.metadata.get("source_document") or self.document_id
+        prefix = f"[Source: {doc_label}] "
+
+        if isinstance(self.content, TableContent):
+            return prefix + self.content.to_text()
+
+        return prefix + str(self.content)
 
     def to_evidence(self) -> EvidenceCitation:
         """Create an EvidenceCitation for the answer validator."""
@@ -186,6 +197,7 @@ class RetrievalResponse(BaseModel):
 class IndexRequest(BaseModel):
     """Request payload for indexing document elements."""
     document_id: str | None = None
+    source_document: str | None = None
     elements: list[dict[str, Any]]
 
 
