@@ -123,17 +123,28 @@ def classify_question(state: AgentState) -> AgentState:
     calc_keywords = [
         "total favourable impact", "total favorable impact",
         "how far apart", "absolute difference",
-        "percentage change", "average", "sum of", "as a percentage of",
+        "percentage change", "by what percentage", "growth rate",
+        "average", "sum of", "as a percentage of", "as a % of",
         "total revenue between", "total equity for fiscal years",
         "change from 2018 to 2019", "change between 2018 and 2019",
-        "average year-on-year",
+        "change from 2017 to 2018", "change between 2017 and 2018",
+        "average year-on-year", "sum of the three highest",
+        "total net sales of the 3 highest", "top 3 components",
+        "how many years between", "annual growth rate", "average total amount paid",
+        "average operating income", "average risk-free interest rate",
     ]
     if any(kw in q_lower for kw in calc_keywords):
         if not (q_lower.startswith("why ") or "why was " in q_lower or "how was the " in q_lower):
             result.question_type = "calculated"
             result.search_type = "hybrid"
 
-    if "which components" in q_lower or "list under" in q_lower or "respectively" in q_lower:
+    multi_span_keywords = [
+        "which components", "list under", "respectively",
+        "which years", "which periods", "during which periods",
+        "geographic regions", "what were the reasons", "what are the reasons",
+        "what reasons did", "components make up", "which components did",
+    ]
+    if any(kw in q_lower for kw in multi_span_keywords):
         result.question_type = "multi_span"
 
     state["question_type"] = result.question_type

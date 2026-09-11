@@ -33,6 +33,65 @@ if CATALOG_PATH.exists():
     except Exception as exc:
         print(f"[resolver] Warning: Failed to load document catalog: {exc}")
 
+ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://orchestrator:8000")
+
+
+def _persist_catalog():
+    """Persists newly discovered company mappings to document_catalog.json."""
+    try:
+        with open(CATALOG_PATH, "w", encoding="utf-8") as f:
+            json.dump(_DOCUMENT_CATALOG, f, indent=2)
+        print(f"[resolver] Persisted updated catalog to {CATALOG_PATH}")
+    except Exception as exc:
+        print(f"[resolver] Note: Could not persist catalog: {exc}")
+
+
+def sync_with_orchestrator():
+    """
+    Auto-syncs catalog with orchestrator's /documents registry.
+    Automatically extracts company names from newly ingested filenames.
+    """
+    global _DOCUMENT_CATALOG
+    try:
+        import urllib.request
+        url = f"{ORCHESTRATOR_URL.rstrip('/')}/documents"
+        req = urllib.request.Request(url, headers={"User-Agent": "Ledger-Resolver"})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            docs = json.loads(resp.read().decode())
+            new_count = 0
+            for d in docs:
+                doc_id = d.get("document_id")
+                filename = d.get("filename", "")
+                if not doc_id:
+                    continue
+                # Extract clean company name from filename, e.g. "nvidia-corp_2023.pdf" -> "nvidia"
+                base = filename.replace(".pdf", "").replace("_", "-")
+                parts = base.split("-")
+                if parts and parts[-1].isdigit():
+                    parts = parts[:-1]
+                comp_candidate = " ".join(parts).strip().lower()
+                clean_comp = clean_entity_name(comp_candidate)
+                if clean_comp:
+                    comp_map = _DOCUMENT_CATALOG.setdefault("company_to_docs", {})
+                    if clean_comp not in comp_map:
+                        comp_map[clean_comp] = [doc_id]
+                        new_count += 1
+                    meta_map = _DOCUMENT_CATALOG.setdefault("doc_to_meta", {})
+                    if doc_id not in meta_map:
+                        meta_map[doc_id] = {
+                            "company": comp_candidate.title(),
+                            "source_document": filename,
+                        }
+            if new_count > 0:
+                print(f"[resolver] Auto-synced {new_count} new documents from orchestrator.")
+                _persist_catalog()
+    except Exception:
+        pass
+
+
+# Run initial sync attempt on startup
+sync_with_orchestrator()
+
 
 def clean_entity_name(name: str) -> str:
     """Normalize company name for fuzzy matching."""
@@ -79,13 +138,24 @@ def resolve_documents_for_entity(entity: str) -> List[str]:
         if w in company_to_docs:
             return company_to_docs[w]
 
-    # 5. Unsupervised Fallback: Entity search via retrieval API
+    # 5. Live sync with orchestrator in case new PDFs were just ingested
+    sync_with_orchestrator()
+    company_to_docs = _DOCUMENT_CATALOG.get("company_to_docs", {})
+    if cleaned in company_to_docs:
+        return company_to_docs[cleaned]
+
+    # 6. Unsupervised Fallback: Entity search via retrieval API
     print(f"[resolver] Entity '{entity}' not found in catalog, executing discovery search...")
     try:
         discovery_chunks = search_documents(f"{entity} annual report financial statements", top_k=3)
         discovered_docs = list(dict.fromkeys(c.document_id for c in discovery_chunks if c.document_id))
         if discovered_docs:
             print(f"[resolver] Discovered candidate docs for '{entity}': {discovered_docs}")
+            if "company_to_docs" in _DOCUMENT_CATALOG:
+                _DOCUMENT_CATALOG["company_to_docs"][cleaned] = discovered_docs
+                if stripped:
+                    _DOCUMENT_CATALOG["company_to_docs"][stripped] = discovered_docs
+                _persist_catalog()
             return discovered_docs
     except Exception as exc:
         print(f"[resolver] Discovery search failed for '{entity}': {exc}")

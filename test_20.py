@@ -159,7 +159,7 @@ def main():
             (qid, qtext, gt, predicted, status)
         )
 
-        time.sleep(2)
+        time.sleep(3)
 
     print("\n" + "=" * 60)
     print("SUMMARY")
