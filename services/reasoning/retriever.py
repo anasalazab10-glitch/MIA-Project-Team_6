@@ -144,6 +144,26 @@ the question accurately.
         )
 
 
+def _get_financial_query_expansions(query: str) -> List[str]:
+    """
+    Generates targeted financial concept expansions for zero-shot retrieval
+    across any newly ingested corporate annual/quarterly reports.
+    """
+    q_low = query.lower()
+    expansions = []
+    if re.search(r"\b(201\d\s*(?:to|through|-)\s*201\d|5[\s-]year|five[\s-]year|historical|annual average)\b", q_low):
+        expansions.append("Selected Financial Data Five Year Summary")
+    if re.search(r"\b(quarterly|quarters?|first quarter|second quarter|third quarter|fourth quarter)\b", q_low):
+        expansions.append("Selected Quarterly Financial Data Operating Results")
+    if re.search(r"\b(operating activities|cash flows?|operating cash)\b", q_low):
+        expansions.append("Consolidated Statements of Cash Flows")
+    if re.search(r"\b(balance sheet|current liabilities|accrued|long-term debt|inventories|receivables|property and equipment|pp&e)\b", q_low):
+        expansions.append("Consolidated Balance Sheets Property and Equipment")
+    if re.search(r"\b(segment|geographic|market sector|revenue by)\b", q_low):
+        expansions.append("Segment Reporting Geographic Information")
+    return expansions
+
+
 def retrieve_evidence(
     state: AgentState,
     mock_mode: bool = False,
@@ -196,7 +216,17 @@ def retrieve_evidence(
                             document_id=doc_id,
                             mock_mode=mock_mode,
                         )
-                        sq_chunks.extend(chunks[:3])
+                        sq_chunks.extend(chunks[:5])
+
+                        # Supplementary targeted search for statement tables
+                        for exp_q in _get_financial_query_expansions(query)[:2]:
+                            exp_chunks = _run_search(
+                                f"{clean_query} {exp_q}",
+                                search_type=search_type,
+                                document_id=doc_id,
+                                mock_mode=mock_mode,
+                            )
+                            sq_chunks.extend(exp_chunks[:3])
             else:
                 # Fallback to global search when no document scoping is available
                 global_chunks = _run_search(
@@ -206,6 +236,14 @@ def retrieve_evidence(
                     mock_mode=mock_mode,
                 )
                 sq_chunks.extend(global_chunks[:6])
+                for exp_q in _get_financial_query_expansions(query)[:2]:
+                    exp_chunks = _run_search(
+                        f"{query} {exp_q}",
+                        search_type=search_type,
+                        document_id=None,
+                        mock_mode=mock_mode,
+                    )
+                    sq_chunks.extend(exp_chunks[:3])
 
             # Deduplicate sq_chunks by chunk_id, preserving the highest score
             unique_sq = {}
@@ -218,28 +256,28 @@ def retrieve_evidence(
             sorted_sq.sort(key=lambda c: (c.score if c.score is not None else -999.0), reverse=True)
 
             if state.get("is_cross_doc"):
-                # Take top 3 chunks per subquery so each entity is represented
-                all_chunks.extend(sorted_sq[:3])
+                # Take top 4 chunks per subquery so each entity is well represented
+                all_chunks.extend(sorted_sq[:4])
             else:
-                # Take top 8 chunks for this subquery
-                all_chunks.extend(sorted_sq[:8])
+                # Take top 10 chunks for this subquery
+                all_chunks.extend(sorted_sq[:10])
     else:
-        if global_doc_id:
-            chunks = _run_search(
-                question,
+        target_doc = global_doc_id
+        chunks = _run_search(
+            question,
+            search_type=search_type,
+            document_id=target_doc,
+            mock_mode=mock_mode,
+        )
+        all_chunks.extend(chunks[:6])
+        for exp_q in _get_financial_query_expansions(question)[:2]:
+            exp_chunks = _run_search(
+                f"{question} {exp_q}",
                 search_type=search_type,
-                document_id=global_doc_id,
+                document_id=target_doc,
                 mock_mode=mock_mode,
             )
-            all_chunks.extend(chunks)
-        else:
-            global_chunks = _run_search(
-                question,
-                search_type=search_type,
-                document_id=None,
-                mock_mode=mock_mode,
-            )
-            all_chunks.extend(global_chunks)
+            all_chunks.extend(exp_chunks[:3])
 
     # Remove duplicate chunks across all subqueries, keeping highest score
     unique_chunks = {}

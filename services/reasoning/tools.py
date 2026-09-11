@@ -1,4 +1,5 @@
 import ast
+import json
 import operator
 import re
 from typing import Any, Dict, List, Optional
@@ -77,26 +78,65 @@ import os
 RETRIEVAL_API_URL = os.environ.get("RETRIEVAL_API_URL", "http://localhost:8000")
 
 
+def _format_table_as_markdown(headers: list, rows: list) -> str:
+    if not headers and not rows:
+        return ""
+    headers_clean = [str(h).strip().replace("\n", " ") for h in headers]
+    header_line = "| " + " | ".join(headers_clean) + " |"
+    sep_line = "| " + " | ".join(["---"] * len(headers_clean)) + " |"
+    row_lines = []
+    for row in rows:
+        row_clean = [str(cell).strip().replace("\n", " ") for cell in row]
+        if len(row_clean) < len(headers_clean):
+            row_clean.extend([""] * (len(headers_clean) - len(row_clean)))
+        row_lines.append("| " + " | ".join(row_clean[:len(headers_clean)]) + " |")
+    return "\n".join([header_line, sep_line] + row_lines)
+
+
 def _adapt_raw_chunk(raw: Dict[str, Any], candidate_meta: Optional[Dict[str, Any]] = None) -> RetrievedChunk:
     """
     Converts retrieval-api's raw chunk format into our RetrievedChunk schema,
     preserving rank, score, and retrieval method metadata for failure analysis.
+    Formats tabular data as clean GitHub-Flavored Markdown tables.
     """
     page_raw = raw.get("page", [0])
     page = page_raw if isinstance(page_raw, list) else [page_raw]
 
     content = raw.get("content", "")
+    content_type = raw.get("content_type", "text")
+
     if isinstance(content, dict):
-        # Table content: format as markdown-style table lines for clear column/row alignment
         headers = content.get("headers", [])
         rows = content.get("rows", [])
-        header_line = " | ".join(str(h).strip() for h in headers)
-        lines = [header_line]
-        for row in rows:
-            lines.append(" | ".join(str(cell).strip() for cell in row))
-        text = "\n".join(lines)
+        text = _format_table_as_markdown(headers, rows)
+        content_type = "table"
     else:
-        text = str(content)
+        s = str(content).strip()
+        if s.startswith("{") and "headers" in s and "rows" in s:
+            try:
+                parsed_json = json.loads(s)
+                if isinstance(parsed_json, dict) and "headers" in parsed_json and "rows" in parsed_json:
+                    text = _format_table_as_markdown(parsed_json.get("headers", []), parsed_json.get("rows", []))
+                    content_type = "table"
+                else:
+                    text = s
+            except Exception:
+                text = s
+        elif "headers=" in s and "rows=" in s:
+            try:
+                m_headers = re.search(r"headers\s*=\s*(\[[^\]]*\])", s)
+                m_rows = re.search(r"rows\s*=\s*(\[.*\])", s, re.DOTALL)
+                if m_headers and m_rows:
+                    headers = ast.literal_eval(m_headers.group(1))
+                    rows = ast.literal_eval(m_rows.group(1))
+                    text = _format_table_as_markdown(headers, rows)
+                    content_type = "table"
+                else:
+                    text = s
+            except Exception:
+                text = s
+        else:
+            text = s
 
     meta = candidate_meta or {}
     return RetrievedChunk(
