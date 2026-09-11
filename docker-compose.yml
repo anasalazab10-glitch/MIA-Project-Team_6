@@ -52,7 +52,7 @@ services:
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
       LANGFUSE_HOST: ${LANGFUSE_HOST}
-      restart: unless-stopped
+    restart: unless-stopped
 
   eval-service:
     build:
@@ -67,6 +67,8 @@ services:
       LANGFUSE_HOST: ${LANGFUSE_HOST}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+    volumes:
+      - ./services/eval-service/results:/app/results
     depends_on:
       - orchestrator
     restart: unless-stopped
